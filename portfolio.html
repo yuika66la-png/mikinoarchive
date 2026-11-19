@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="icon" href="media/mikino-logo.png">
+<meta name="theme-color" content="#ac0606">
+<title>Mikino Archive Portfolio</title>
+<meta name="description" content="Portfolio of mikinoarchive: vintage curation, styling and sourcing. 80s to Y2K and modern. Dallas, TX.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Archivo:wght@400;500;700;800&display=swap">
+<style>
+  /* Layout: an editorial cover (corner fine print, huge serif name, a strip of work images),
+     then Services, Journey, an About block with a portrait and big sans name, and Contact. */
+  :root {
+    color-scheme: light;
+    --paper: #ac0606;          /* brand red from the logo, now the page ground */
+    --card: #8f0404;           /* image placeholder, a deeper red */
+    --ink: #ffffff;
+    --muted: rgba(255, 255, 255, .72);
+    --red: #ffd9d9;            /* accent on red: pale rose for hovers and the status dot */
+    --line: rgba(255, 255, 255, .28);
+    --f-serif: "Cormorant Garamond", "Didot", "Bodoni 72", Georgia, serif;
+    --f-sans: "Archivo", "Helvetica Neue", Arial, sans-serif;
+    --gutter: clamp(16px, 3.2vw, 44px);
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 400 15px/1.55 var(--f-sans); }
+  a { color: inherit; text-decoration: none; }
+  :focus-visible { outline: 2px solid var(--red); outline-offset: 3px; }
+  .fine { font: 500 10.5px/1.45 var(--f-sans); letter-spacing: .08em; text-transform: uppercase; }
+  .pad { padding-inline: var(--gutter); }
+
+  /* ---------- Cover ---------- */
+  .cover { min-height: 100svh; display: grid; grid-template-rows: auto 1fr auto; padding-block: 22px 20px; }
+  .top { display: flex; justify-content: space-between; align-items: baseline; gap: 20px; }
+  .top nav { display: flex; gap: clamp(14px, 2.4vw, 34px); flex-wrap: wrap; justify-content: flex-end; }
+  .top nav a:hover, .corner a:hover { color: var(--red); }
+
+  .stage { display: flex; flex-direction: column; justify-content: center; min-width: 0; padding-block: 3vh; }
+  .name {
+    margin: 0; font: 500 clamp(64px, 15.2vw, 260px)/.86 var(--f-serif); letter-spacing: -.035em;
+    white-space: nowrap; text-align: center; position: relative; z-index: 2;
+  }
+  .name em { font-style: italic; font-weight: 400; }
+
+  /* Strip of work: tiles of varying size sitting under the headline, overlapping it slightly */
+  .strip {
+    display: flex; align-items: flex-start; justify-content: center; gap: clamp(14px, 3vw, 46px);
+    margin-top: calc(clamp(64px, 15.2vw, 260px) * -0.12);
+    overflow-x: auto; scrollbar-width: none; padding: 0 var(--gutter);
+    scroll-snap-type: x proximity;
+  }
+  .strip::-webkit-scrollbar { display: none; }
+  .tile {
+    position: relative; flex: none; margin: 0; overflow: hidden; background: var(--card);
+    width: clamp(92px, 11vw, 190px); aspect-ratio: 4 / 5; scroll-snap-align: center;
+  }
+  .tile:nth-child(2) { width: clamp(100px, 12vw, 205px); aspect-ratio: 3 / 4; margin-top: 2.4vw; }
+  .tile:nth-child(3) { width: clamp(110px, 13vw, 220px); aspect-ratio: 1 / 1; margin-top: 4.5vw; }
+  .tile:nth-child(4) { width: clamp(84px, 9.5vw, 160px); aspect-ratio: 3 / 5; margin-top: .6vw; }
+  .tile:nth-child(5) { width: clamp(104px, 12vw, 205px); aspect-ratio: 4 / 5; margin-top: 3.2vw; }
+  .tile:nth-child(6) { width: clamp(88px, 10vw, 170px); aspect-ratio: 2 / 3; margin-top: 1.4vw; }
+  .tile img, .tile video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; filter: saturate(.92); transition: transform .6s ease, filter .3s; }
+  .tile:hover img, .tile:hover video { transform: scale(1.04); filter: none; }
+  .tile .ph { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); }
+  .tile .no { position: absolute; left: 6px; bottom: 6px; z-index: 1; color: #fff; mix-blend-mode: difference; }
+  .tile a { position: absolute; inset: 0; z-index: 2; }
+
+  .bottom { display: grid; grid-template-columns: 1fr auto; gap: 20px; align-items: end; }
+  .corner { max-width: 46ch; }
+  .corner.r { text-align: right; }
+  .corner .made { display: inline-flex; gap: 6px; align-items: center; margin-top: 8px; color: var(--muted); }
+  .corner .made img { height: 14px; width: auto; filter: brightness(0) invert(1); }
+  .dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--ink); margin-right: 6px; vertical-align: 1px; }
+
+  /* ---------- Sections ---------- */
+  section { padding-block: clamp(64px, 10vw, 140px); border-top: 1px solid var(--line); }
+  .sec-head { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: var(--gutter); margin-bottom: clamp(28px, 4vw, 56px); }
+  .sec-head h2 { margin: 0; font: 500 clamp(44px, 7vw, 104px)/.9 var(--f-serif); letter-spacing: -.03em; }
+  .sec-head h2 em { font-weight: 400; }
+  .sec-head p { margin: 0; align-self: end; max-width: 52ch; font-size: clamp(16px, 1.5vw, 19px); color: var(--muted); }
+
+  /* Services */
+  .services { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-top: 1px solid var(--ink); }
+  .svc { padding: 18px 18px 26px 0; border-right: 1px solid var(--line); }
+  .svc + .svc { padding-left: 18px; }
+  .svc:last-child { border-right: 0; }
+  .svc h3 { margin: 10px 0 8px; font: 500 clamp(24px, 2.4vw, 34px)/1.05 var(--f-serif); }
+  .svc p { margin: 0; color: var(--muted); }
+
+  /* Journey */
+  .journey { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--ink); }
+  .journey li { display: grid; grid-template-columns: minmax(80px, 1fr) minmax(0, 2fr) minmax(0, 1.4fr); gap: var(--gutter); padding: 20px 0; border-bottom: 1px solid var(--line); align-items: baseline; }
+  .journey .what { font: 500 clamp(22px, 2.2vw, 30px)/1.1 var(--f-serif); }
+  .journey .note { color: var(--muted); }
+
+  /* About: the clean variant, portrait plus big sans name */
+  .about-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: var(--gutter); align-items: end; }
+  .portrait { margin: 0; aspect-ratio: 4 / 5; background: var(--card); position: relative; overflow: hidden; max-width: 320px; }
+  .portrait img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; filter: grayscale(1); }
+  .portrait .ph { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; padding: 16px; color: var(--muted); }
+  .sans-name { margin: clamp(24px, 4vw, 48px) 0 0; font: 800 clamp(40px, 9.4vw, 160px)/.88 var(--f-sans); letter-spacing: -.045em; text-transform: uppercase; }
+  .about-copy { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: var(--gutter); margin-top: 22px; }
+  .about-copy p { margin: 0 0 14px; font-size: clamp(16px, 1.5vw, 19px); max-width: 56ch; }
+
+  /* Contact */
+  .contact { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: var(--gutter); }
+  .big-link { display: block; font: 500 clamp(36px, 6.4vw, 96px)/1 var(--f-serif); letter-spacing: -.03em; border-bottom: 1px solid var(--ink); padding-bottom: 10px; overflow-wrap: anywhere; transition: color .2s; }
+  .big-link:hover { color: var(--red); border-color: var(--red); }
+  .links { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 var(--gutter); margin-top: 28px; }
+  .links a { display: flex; justify-content: space-between; padding: 14px 0; border-bottom: 1px solid var(--line); }
+  .links a:hover { color: var(--red); }
+
+  footer { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; padding-block: 22px; border-top: 1px solid var(--line); color: var(--muted); }
+
+  @media (max-width: 760px) {
+    .top { flex-direction: column; gap: 10px; }
+    .top nav { justify-content: flex-start; }
+    .name { white-space: normal; text-align: left; font-size: clamp(64px, 23vw, 140px); line-height: .82; }
+    .strip { justify-content: flex-start; margin-top: 18px; margin-inline: calc(var(--gutter) * -1); }
+    .tile, .tile:nth-child(n) { width: 38vw; }
+    .bottom { grid-template-columns: minmax(0, 1fr); margin-top: 22px; }
+    .corner.r { text-align: left; }
+    .sec-head, .about-grid, .about-copy, .contact { grid-template-columns: minmax(0, 1fr); }
+    .services { grid-template-columns: minmax(0, 1fr); }
+    .svc, .svc + .svc { padding: 16px 0 20px; border-right: 0; border-bottom: 1px solid var(--line); }
+    .journey li { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+    .links { grid-template-columns: minmax(0, 1fr); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    .tile img, .tile video { transition: none; }
+    .tile:hover img, .tile:hover video { transform: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ============ Cover ============ -->
+<header class="cover pad" id="top">
+  <div class="top">
+    <span class="fine">Vintage curator &amp; founder at mikinoarchive</span>
+    <nav class="fine" aria-label="Main">
+      <a href="#services">Services</a>
+      <a href="#journey">Journey</a>
+      <a href="#about">About</a>
+      <a href="#contact">Contact</a>
+    </nav>
+  </div>
+
+  <div class="stage">
+    <h1 class="name">Mikino <em>Archive</em></h1>
+    <div class="strip" id="strip" aria-label="Selected work"></div>
+  </div>
+
+  <div class="bottom">
+    <p class="corner fine">Curating 80s to Y2K vintage and modern pieces.<br>Secondhand, hand-picked, styled with intent.</p>
+    <div class="corner r fine">
+      <div>Dallas, Texas</div>
+      <div><span class="dot"></span>Open to styling, sourcing &amp; collaboration</div>
+      <a class="made" href="index.html"><img src="media/mikino-logo.png" alt="">mikinoarchive.com</a>
+    </div>
+  </div>
+</header>
+
+<main>
+  <!-- ============ Services ============ -->
+  <section id="services" class="pad">
+    <div class="sec-head">
+      <h2>Services</h2>
+      <p>What mikinoarchive offers beyond the shop. Every project starts from the archive: real pieces, chosen by hand.</p>
+    </div>
+    <div class="services">
+      <div class="svc"><span class="fine">01</span><h3>Vintage curation</h3><p>Edited drops of 80s, 90s and Y2K pieces, sourced and checked one by one.</p></div>
+      <div class="svc"><span class="fine">02</span><h3>Styling</h3><p>Looks for shoots, content and events, built from archive and modern pieces.</p></div>
+      <div class="svc"><span class="fine">03</span><h3>Personal sourcing</h3><p>Looking for something specific? Send a reference and a size, and the hunt begins.</p></div>
+      <div class="svc"><span class="fine">04</span><h3>Collaboration</h3><p>Pop-ups, brand collabs and creative projects with people who love clothes.</p></div>
+    </div>
+  </section>
+
+  <!-- ============ Journey ============ -->
+  <section id="journey" class="pad">
+    <div class="sec-head">
+      <h2><em>Journey</em></h2>
+      <p>How the archive grew, from a closet to a curated shop.</p>
+    </div>
+    <ol class="journey">
+      <li><span class="fine">[Year]</span><span class="what">The first finds</span><span class="note">[Where it started: the first pieces, the first thrift trip]</span></li>
+      <li><span class="fine">[Year]</span><span class="what">mikinoarchive opens</span><span class="note">Instagram @mikinoarchive launches, followed by Depop, Curtsy and Vinted.</span></li>
+      <li><span class="fine">[Year]</span><span class="what">[Milestone]</span><span class="note">[A pop-up, a collab, a shoot, a sales number you're proud of]</span></li>
+      <li><span class="fine">2026</span><span class="what">mikinoarchive.com</span><span class="note">The archive gets its own home on the web.</span></li>
+    </ol>
+  </section>
+
+  <!-- ============ About ============ -->
+  <section id="about" class="pad">
+    <div class="about-grid">
+      <figure class="portrait">
+        <div class="ph fine">Portrait<br>coming soon</div>
+        <!-- Replace with: <img src="media/portrait.jpg" alt="Founder of mikinoarchive"> -->
+      </figure>
+      <div>
+        <span class="fine">About</span>
+        <p style="margin:10px 0 0;max-width:44ch;font-size:clamp(16px,1.5vw,19px)">[Your name], founder of mikinoarchive. Based in Dallas, collecting the clothes that never should have gone out of style.</p>
+      </div>
+    </div>
+    <h2 class="sans-name">Mikino Archive</h2>
+    <div class="about-copy">
+      <span class="fine">Dallas, TX · Est. [Year]</span>
+      <div>
+        <p>Mikino Archive is a small vintage shop and personal archive. Every piece is picked by hand, from 80s and 90s classics to Y2K and modern finds, and each one is chosen to be worn again.</p>
+        <p>[A sentence or two in your own words: why you started, what you look for in a piece, what the name means.]</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ Contact ============ -->
+  <section id="contact" class="pad">
+    <div class="contact">
+      <div>
+        <h2 style="margin:0;font:500 clamp(44px,7vw,104px)/.9 var(--f-serif);letter-spacing:-.03em">Contact</h2>
+      </div>
+      <div>
+        <p class="fine" style="margin:0 0 14px;color:var(--muted)">For styling, sourcing and collaborations</p>
+        <a class="big-link" href="https://www.instagram.com/mikinoarchive/" target="_blank" rel="noopener">@mikinoarchive ↗</a>
+        <!-- Add an email once you have one: <a class="big-link" href="mailto:hello@mikinoarchive.com">hello@mikinoarchive.com</a> -->
+        <div class="links fine">
+          <a href="https://www.instagram.com/mikinoarchive/" target="_blank" rel="noopener"><span>Instagram</span><span>↗</span></a>
+          <a href="https://depop.com/mikinoarchivejp" target="_blank" rel="noopener"><span>Depop</span><span>↗</span></a>
+          <a href="https://curtsyapp.com/closet/2cI9nRJjfl" target="_blank" rel="noopener"><span>Curtsy</span><span>↗</span></a>
+          <a href="https://www.vinted.com/member/3180437009?tab=closet" target="_blank" rel="noopener"><span>Vinted</span><span>↗</span></a>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="pad fine">
+  <span>© <span id="yr">2026</span> Mikino Archive</span>
+  <a href="#top">Back to top ↑</a>
+</footer>
+
+<script>
+  /* Work strip. Fills from the same Behold.so Instagram feed as the main site.
+     To hand-pick instead, list your own images in PICKS, e.g. ["media/work-01.jpg", ...]. */
+  var FEED_URL = "https://feeds.behold.so/wMWAsJzkAj5smFBOsWck";
+  var PICKS = [];
+  var TILES = 6;
+  var IG = "https://www.instagram.com/mikinoarchive/";
+  var strip = document.getElementById("strip");
+
+  function tile(post, i) {
+    var n = String(i + 1).padStart(2, "0");
+    var fig = document.createElement("figure");
+    fig.className = "tile";
+    fig.innerHTML = '<span class="ph fine">No. ' + n + '</span>';
+    if (post && post.src) {
+      var m = document.createElement(post.video ? "video" : "img");
+      if (post.video) {
+        m.muted = true; m.loop = true; m.autoplay = true; m.playsInline = true;
+        m.setAttribute("playsinline", ""); if (post.poster) m.poster = post.poster;
+      } else { m.loading = "lazy"; m.alt = post.alt || "mikinoarchive work no. " + n; }
+      m.addEventListener("error", function () { m.remove(); });
+      m.src = post.src;
+      fig.appendChild(m);
+      var no = document.createElement("span");
+      no.className = "no fine"; no.textContent = n;
+      fig.appendChild(no);
+    }
+    var a = document.createElement("a");
+    a.href = (post && post.link) || IG; a.target = "_blank"; a.rel = "noopener";
+    a.setAttribute("aria-label", "View work no. " + n);
+    fig.appendChild(a);
+    return fig;
+  }
+  function render(posts) {
+    strip.innerHTML = "";
+    for (var i = 0; i < TILES; i++) strip.appendChild(tile(posts[i], i));
+  }
+  function fromBehold(p) {
+    var size = (p.sizes && (p.sizes.medium || p.sizes.large)) || {};
+    var video = p.mediaType === "VIDEO";
+    return { video: video, src: video ? p.mediaUrl : (size.mediaUrl || p.mediaUrl || p.thumbnailUrl),
+             poster: p.thumbnailUrl, link: p.permalink, alt: (p.prunedCaption || p.caption || "").slice(0, 120) };
+  }
+
+  if (PICKS.length) {
+    render(PICKS.map(function (src) { return { src: src }; }));
+  } else {
+    render([]);
+    if (FEED_URL) fetch(FEED_URL)
+      .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then(function (d) {
+        var posts = (Array.isArray(d) ? d : (d.posts || [])).map(fromBehold).filter(function (p) { return p.src; });
+        render(posts);
+      })
+      .catch(function () { /* keep placeholders */ });
+  }
+  document.getElementById("yr").textContent = new Date().getFullYear();
+</script>
+</body>
+</html>
