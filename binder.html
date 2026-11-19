@@ -925,24 +925,21 @@ function refreshTextures() {
 
 /* ---------- View state and camera ---------- */
 let view = 0;          // 0 = closed, 1 = cover open on page 1, then one spread per step
-let focus = 'right';   // which page a narrow screen is looking at
 let needsRender = true;
-const portrait = () => window.innerWidth / window.innerHeight < 0.85;
 
 const BASE_PITCH = 0;     // camera looks straight down at the binder
 const camState = { target: new THREE.Vector3(SPINE + BW / 2, 0, 0), dist: 150, yaw: 0, pitch: BASE_PITCH };
 const camGoal = { target: new THREE.Vector3(), dist: 80 };
-const user = { yaw: 0, pitch: 0, zoom: 1 };
+const user = { yaw: 0, pitch: 0, zoom: 1, panX: 0, panZ: 0 };
+const MIN_ZOOM = 0.2, MAX_ZOOM = 1.5;   // pinch in to about 5x on the open spread
 
 function frameCamera() {
   const aspect = window.innerWidth / window.innerHeight;
   let cx, w, h;
   if (view === 0) {
     cx = SPINE + BW / 2; w = BW + 2; h = BH + 2;
-  } else if (portrait()) {
-    cx = (focus === 'left' ? -1 : 1) * (SPINE + BW / 2); w = BW + 1.2; h = BH + 1.2;
   } else {
-    cx = 0; w = 2 * (SPINE + BW) + 2; h = BH + 2;
+    cx = 0; w = 2 * (SPINE + BW) + 1; h = BH + 2;   // both pages of the spread, on any screen
   }
   const uiPad = 1 + 150 / window.innerHeight;
   const tanH = Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2);
@@ -952,9 +949,8 @@ function frameCamera() {
   needsRender = true;
 }
 
-function setView(v, newFocus) {
+function setView(v) {
   v = clamp(v, 0, MAX_VIEW);
-  if (newFocus) focus = newFocus;
   const old = view;
   view = v;
   cover.set(view > 0 ? Math.PI : 0, view < old && view === 0 ? (old - 1) * 90 : 0);
@@ -965,43 +961,28 @@ function setView(v, newFocus) {
   });
   if (view < old) flipping.reverse();
   flipping.forEach(([leaf, target], k) => leaf.set(target, k * 90 + (view > old && old === 0 ? 300 : 0)));
+  if (view !== old) { user.panX = user.panZ = 0; if (user.zoom < 1) user.zoom = 1; }
   frameCamera();
   refreshTextures();
   updatePager();
 }
 
-function canNext() {
-  if (view === 0) return true;
-  if (portrait()) {
-    if (focus === 'left') return pagesInView(view).length > 1 || (view === 1);
-    return view < MAX_VIEW;
-  }
-  return view < MAX_VIEW;
-}
+function canNext() { return view < MAX_VIEW; }
 function canPrev() { return view > 0; }
 
 function next() {
   if (!canNext()) return;
-  if (view === 0) return setView(1, 'right');
-  if (portrait()) {
-    if (focus === 'left') { focus = 'right'; frameCamera(); updatePager(); return; }
-    return setView(view + 1, 'left');
-  }
   setView(view + 1);
 }
 function prev() {
   if (!canPrev()) return;
-  if (portrait() && focus === 'right' && view > 1) { focus = 'left'; frameCamera(); updatePager(); return; }
-  setView(view - 1, 'right');
+  setView(view - 1);
 }
 
 function updatePager() {
   let label;
   if (view === 0) label = 'Cover';
-  else if (portrait()) {
-    if (focus === 'left') label = view === 1 ? 'Inside cover' : `Page ${2 * view - 2} of ${PAGES}`;
-    else label = `Page ${2 * view - 1} of ${PAGES}`;
-  } else {
+  else {
     const ps = pagesInView(view);
     label = ps.length === 2 ? `Pages ${ps[0]}–${ps[1]} of ${PAGES}` : `Page ${ps[0]} of ${PAGES}`;
   }
@@ -1089,9 +1070,7 @@ function swapInspect(i) {
   loadHiRes(insp);
   showInfo(i);
   const v = viewOfPage(pageOfCard(i));
-  const f = pageOfCard(i) % 2 === 1 ? 'right' : 'left';
-  if (v !== view) setView(v, f);
-  else if (portrait() && f !== focus) { focus = f; frameCamera(); updatePager(); }
+  if (v !== view) setView(v);
   needsRender = true;
 }
 
@@ -1167,6 +1146,52 @@ const raycaster = new THREE.Raycaster();
 const ndc = new THREE.Vector2();
 const pointers = new Map();
 let down = null, pinch = null;
+const zoomed = () => user.zoom < 0.9;
+
+// Point on the table under a screen position, seen from where the camera is now.
+const tablePlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+function tablePoint(clientX, clientY) {
+  ndc.set(clientX / window.innerWidth * 2 - 1, -(clientY / window.innerHeight) * 2 + 1);
+  raycaster.setFromCamera(ndc, camera);
+  const out = new THREE.Vector3();
+  return raycaster.ray.intersectPlane(tablePlane, out) ? out : null;
+}
+
+// Keep the zoomed view over the binder; zoomed all the way out it re-centres.
+function clampPan() {
+  const room = clamp((1 - user.zoom) / (1 - MIN_ZOOM), 0, 1);
+  const halfW = view === 0 ? BW / 2 : SPINE + BW;
+  user.panX = clamp(user.panX, -halfW * room, halfW * room);
+  user.panZ = clamp(user.panZ, -BH / 2 * room, BH / 2 * room);
+}
+
+// Move the view so the table point under screen position `from` ends up under `to`.
+function panBetween(from, to) {
+  snapCamera();
+  const a = tablePoint(from.x, from.y), b = tablePoint(to.x, to.y);
+  if (!a || !b) return;
+  user.panX += a.x - b.x;
+  user.panZ += a.z - b.z;
+  clampPan();
+  snapCamera();
+}
+
+function setZoom(z, anchor) {
+  const before = anchor && (snapCamera(), tablePoint(anchor.x, anchor.y));
+  user.zoom = clamp(z, MIN_ZOOM, MAX_ZOOM);
+  clampPan();
+  snapCamera();
+  const after = before && tablePoint(anchor.x, anchor.y);
+  if (before && after) {
+    user.panX += before.x - after.x;
+    user.panZ += before.z - after.z;
+    clampPan();
+    snapCamera();
+  }
+  needsRender = true;
+}
+
+function resetZoom() { user.zoom = 1; user.panX = user.panZ = 0; needsRender = true; }
 
 function pick(clientX, clientY) {
   ndc.set(clientX / window.innerWidth * 2 - 1, -(clientY / window.innerHeight) * 2 + 1);
@@ -1264,8 +1289,8 @@ function endDrag(cancel) {
   if (fling) done = forward ? fling > 0 : fling < 0;
   if (cancel) done = false;
   if (done) {
-    if (forward) setView(view + 1, view === 0 ? 'right' : 'left');
-    else setView(view - 1, 'right');
+    if (forward) setView(view + 1);
+    else setView(view - 1);
   } else {
     f.to = NaN;               // force set() to animate back from where it was let go
     f.set(forward ? 0 : Math.PI);
@@ -1288,11 +1313,13 @@ canvas.addEventListener('pointerdown', (e) => {
   pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
   if (pointers.size === 1) {
     const p = binderPoint(e.clientX, e.clientY);
-    down = { x: e.clientX, y: e.clientY, t: performance.now(), yaw: user.yaw, pitch: user.pitch, type: e.pointerType, grab: p ? grabTarget(p.x) : null };
+    const pan = e.pointerType !== 'mouse' && zoomed() && !insp;
+    down = { x: e.clientX, y: e.clientY, t: performance.now(), type: e.pointerType, pan, last: { x: e.clientX, y: e.clientY },
+      grab: p && !pan ? grabTarget(p.x) : null };
   } else if (pointers.size === 2) {
     if (pdrag) endDrag(true);
     const [a, b] = [...pointers.values()];
-    pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), zoom: user.zoom };
+    pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), mid: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 } };
     down = null;
   }
 });
@@ -1309,7 +1336,21 @@ canvas.addEventListener('pointermove', (e) => {
   }
   if (pinch && pointers.size === 2) {
     const [a, b] = [...pointers.values()];
-    user.zoom = clamp(pinch.zoom * pinch.d / Math.max(1, Math.hypot(a.x - b.x, a.y - b.y)), 0.55, 1.5);
+    const d = Math.max(1, Math.hypot(a.x - b.x, a.y - b.y));
+    const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+    if (insp) user.zoom = clamp(user.zoom * pinch.d / d, MIN_ZOOM, MAX_ZOOM);
+    else {
+      setZoom(user.zoom * pinch.d / d, pinch.mid);   // the spot between the fingers stays put
+      panBetween(pinch.mid, mid);                   // and follows them as they move
+    }
+    pinch = { d, mid };
+    needsRender = true;
+    return;
+  }
+  if (down && down.pan && pointers.size === 1) {
+    const at = { x: e.clientX, y: e.clientY };
+    panBetween(down.last, at);
+    down.last = at;
     needsRender = true;
     return;
   }
@@ -1328,6 +1369,7 @@ canvas.addEventListener('pointermove', (e) => {
   }
 });
 
+let lastTap = null;
 function endPointer(e) {
   pointers.delete(e.pointerId);
   if (pointers.size < 2) pinch = null;
@@ -1337,6 +1379,11 @@ function endPointer(e) {
   const d = down;
   down = null;
   if (Math.hypot(dx, dy) < 8 && dt < 600) {
+    const now = performance.now();
+    if (d.type !== 'mouse' && !insp && zoomed() && lastTap && now - lastTap.t < 320 && Math.hypot(e.clientX - lastTap.x, e.clientY - lastTap.y) < 30) {
+      lastTap = null; resetZoom(); return;   // double-tap to zoom back out
+    }
+    lastTap = { t: now, x: e.clientX, y: e.clientY };
     const hit = pick(e.clientX, e.clientY);
     if (insp) {
       if (hit && hit.inspect) { insp.flipTo += Math.PI; needsRender = true; }
@@ -1345,7 +1392,7 @@ function endPointer(e) {
     else if (hit && hit.cover) next();
     return;
   }
-  if (d.type !== 'mouse' && !insp && Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.3) {
+  if (d.type !== 'mouse' && !insp && !d.pan && Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.3) {
     dx < 0 ? next() : prev();
   }
 }
@@ -1355,10 +1402,9 @@ canvas.addEventListener('pointerleave', () => { $('tip').hidden = true; });
 canvas.addEventListener('wheel', (e) => {
   e.preventDefault();
   if (insp) return;
-  user.zoom = clamp(user.zoom * Math.exp(e.deltaY * 0.0012), 0.55, 1.5);
-  needsRender = true;
+  setZoom(user.zoom * Math.exp(e.deltaY * (e.ctrlKey ? 0.01 : 0.0012)), { x: e.clientX, y: e.clientY });
 }, { passive: false });
-canvas.addEventListener('dblclick', () => { user.zoom = 1; needsRender = true; });
+canvas.addEventListener('dblclick', resetZoom);
 
 $('next').addEventListener('click', () => { if (insp) closeInspect(); next(); });
 $('prev').addEventListener('click', () => { if (insp) closeInspect(); prev(); });
@@ -1373,11 +1419,10 @@ document.addEventListener('keydown', (e) => {
 });
 
 function goToCard(i) {
-  const p = pageOfCard(i), v = viewOfPage(p), f = p % 2 === 1 ? 'right' : 'left';
-  const moving = v !== view || (portrait() && f !== focus);
+  const v = viewOfPage(pageOfCard(i));
+  const moving = v !== view;
   if (insp) return openInspect(i);
-  if (v !== view) setView(v, f);
-  else if (portrait() && f !== focus) { focus = f; frameCamera(); updatePager(); }
+  if (v !== view) setView(v);
   setTimeout(() => openInspect(i), moving && !reduceMotion ? 900 : 0);
 }
 
@@ -1405,6 +1450,21 @@ window.addEventListener('resize', () => {
 /* ---------- Main loop ---------- */
 let last = performance.now();
 const camDir = new THREE.Vector3();
+const camAim = new THREE.Vector3();
+function placeCamera() {
+  camDir.set(Math.sin(camState.yaw) * Math.sin(camState.pitch), Math.cos(camState.pitch), Math.cos(camState.yaw) * Math.sin(camState.pitch));
+  camera.position.copy(camState.target).addScaledVector(camDir, camState.dist);
+  camera.lookAt(camState.target);
+  camera.updateMatrixWorld();
+}
+// Jump straight to the goal, so a pinch tracks the fingers without lag.
+function snapCamera() {
+  camState.target.copy(camGoal.target).add(camAim.set(user.panX, 0, user.panZ));
+  camState.dist = camGoal.dist * user.zoom;
+  camState.yaw = user.yaw;
+  camState.pitch = BASE_PITCH + user.pitch;
+  placeCamera();
+}
 function tick(now) {
   const dt = Math.min(0.05, (now - last) / 1000);
   last = now;
@@ -1414,16 +1474,14 @@ function tick(now) {
   rings.visible = cover.angle > 1.1;
 
   const k = reduceMotion ? 1 : 1 - Math.exp(-dt * 5);
-  const before = camState.target.x + camState.dist + camState.yaw + camState.pitch;
-  camState.target.lerp(camGoal.target, k);
+  const before = camState.target.x + camState.target.z + camState.dist + camState.yaw + camState.pitch;
+  camState.target.lerp(camAim.set(user.panX, 0, user.panZ).add(camGoal.target), k);
   camState.dist += (camGoal.dist * user.zoom - camState.dist) * k;
   camState.yaw += (user.yaw - camState.yaw) * k;
   camState.pitch += (BASE_PITCH + user.pitch - camState.pitch) * k;
-  const after = camState.target.x + camState.dist + camState.yaw + camState.pitch;
+  const after = camState.target.x + camState.target.z + camState.dist + camState.yaw + camState.pitch;
   if (Math.abs(after - before) > 1e-4) moving = true;
-  camDir.set(Math.sin(camState.yaw) * Math.sin(camState.pitch), Math.cos(camState.pitch), Math.cos(camState.yaw) * Math.sin(camState.pitch));
-  camera.position.copy(camState.target).addScaledVector(camDir, camState.dist);
-  camera.lookAt(camState.target);
+  placeCamera();
 
   if (updateInspect(now)) moving = true;
 
@@ -1456,11 +1514,10 @@ async function start() {
   const linked = /^\d+$/.test(hash) ? items.findIndex((it) => it.n === Number(hash)) : -1;
   frameCamera();
   if (linked >= 0) {
-    const p = pageOfCard(linked);
-    setView(viewOfPage(p), p % 2 === 1 ? 'right' : 'left');
+    setView(viewOfPage(pageOfCard(linked)));
     setTimeout(() => openInspect(linked), reduceMotion ? 0 : 1200);
   } else if (hash === 'open') {
-    setView(1, 'right');
+    setView(1);
   } else {
     setView(0);
   }
@@ -1471,7 +1528,7 @@ start();
 
 // Small hook for automated checks.
 window.__binder = {
-  state: () => ({ view, focus, maxView: MAX_VIEW, pages: PAGES, inspecting: insp ? items[insp.i].n : null, label: $('page-label').textContent,
+  state: () => ({ view, zoom: user.zoom, maxView: MAX_VIEW, pages: PAGES, inspecting: insp ? items[insp.i].n : null, label: $('page-label').textContent,
     texturesLoaded: cards.filter((c) => c.tex).length }),
   next, prev, goToCard, closeInspect,
 
