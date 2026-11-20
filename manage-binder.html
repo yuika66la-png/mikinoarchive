@@ -1,0 +1,551 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Binder Manager · mikinoarchive</title>
+<link rel="icon" href="binder/logo.png">
+<style>
+  :root {
+    --red: #a51b16;
+    --red-deep: #7e130f;
+    --paper: #fbf7f0;
+    --ink: #2a1a17;
+    --dim: #7a6a64;
+    --line: #e5dcd2;
+    --ok: #2f7a3b;
+    --warn: #b0640b;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { margin: 0; background: var(--paper); color: var(--ink); }
+  body { font: 16px/1.45 -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif; padding-bottom: 96px; }
+  button, input, select, textarea { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+
+  header {
+    position: sticky; top: 0; z-index: 5;
+    background: var(--red); color: #fff;
+    padding: max(12px, env(safe-area-inset-top)) 16px 12px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  header h1 { margin: 0; font-size: 18px; font-weight: 600; flex: 1; }
+  header a { color: #fff; font-size: 14px; opacity: .85; }
+
+  main { max-width: 900px; margin: 0 auto; padding: 16px; }
+  .note { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; margin-bottom: 16px; }
+  .note h2 { margin: 0 0 8px; font-size: 17px; }
+  .note ol { margin: 8px 0; padding-left: 22px; }
+  .note li { margin: 4px 0; }
+  .note code { background: #f2ebe2; padding: 1px 5px; border-radius: 4px; font-size: 14px; word-break: break-all; }
+
+  .field { display: block; margin: 10px 0; }
+  .field span { display: block; font-size: 14px; color: var(--dim); margin-bottom: 4px; }
+  .field input, .field select, .field textarea {
+    width: 100%; padding: 11px 12px; border: 1px solid var(--line); border-radius: 10px; background: #fff;
+  }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  .btn { border: 0; border-radius: 999px; padding: 11px 18px; font-weight: 600; background: #efe6dc; }
+  .btn.primary { background: var(--red); color: #fff; }
+  .btn.danger { background: #fff; color: var(--red); border: 1px solid var(--red); }
+  .btn:disabled { opacity: .45; cursor: default; }
+  .btn.small { padding: 7px 12px; font-size: 14px; }
+
+  .toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
+  .toolbar .count { color: var(--dim); font-size: 14px; flex: 1; min-width: 120px; }
+  .toolbar input[type=search] { flex: 1 1 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: #fff; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 10px; }
+  .item {
+    position: relative; border: 1px solid var(--line); border-radius: 10px; background: #fff; overflow: hidden;
+    padding: 0; text-align: left; display: flex; flex-direction: column;
+  }
+  .item img { width: 100%; aspect-ratio: 3 / 4; object-fit: cover; display: block; background: #eee5da; }
+  .item .meta { padding: 6px 8px 8px; font-size: 12px; line-height: 1.3; }
+  .item .meta b { display: block; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .item .tag {
+    position: absolute; top: 6px; left: 6px; font-size: 11px; font-weight: 700; color: #fff;
+    padding: 2px 7px; border-radius: 999px; background: var(--ok);
+  }
+  .item .tag.edit { background: var(--warn); }
+  .item.removed { opacity: .45; }
+  .item.removed .tag { background: var(--red); }
+
+  .savebar {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 6;
+    background: #fff; border-top: 1px solid var(--line);
+    padding: 12px 16px max(12px, env(safe-area-inset-bottom));
+    display: flex; gap: 10px; align-items: center; justify-content: center;
+  }
+  .savebar .msg { flex: 1; font-size: 14px; color: var(--dim); max-width: 520px; }
+
+  dialog {
+    border: 0; border-radius: 16px; padding: 0; width: min(520px, calc(100% - 24px));
+    max-height: calc(100% - 24px); background: var(--paper); color: var(--ink);
+  }
+  dialog::backdrop { background: rgba(30, 10, 8, .55); }
+  dialog form { padding: 18px 18px 20px; }
+  dialog h2 { margin: 0 0 6px; font-size: 18px; }
+  .photo-pick { display: grid; grid-template-columns: 110px 1fr; gap: 14px; align-items: center; margin: 10px 0 4px; }
+  .photo-pick img { width: 110px; aspect-ratio: 3 / 4; object-fit: cover; border-radius: 8px; background: #eee5da; border: 1px solid var(--line); }
+  .photo-pick label.btn { display: inline-block; text-align: center; }
+  .photo-pick input { display: none; }
+  .dlg-actions { display: flex; gap: 10px; justify-content: space-between; margin-top: 16px; flex-wrap: wrap; }
+  .dlg-actions .right { display: flex; gap: 10px; margin-left: auto; }
+
+  .status { margin: 10px 0 0; font-size: 14px; }
+  .status.err { color: var(--red); }
+  .status.ok { color: var(--ok); }
+</style>
+</head>
+<body>
+<header>
+  <h1>Binder Manager</h1>
+  <a href="binder.html" target="_blank" rel="noopener">バインダーを見る ↗</a>
+</header>
+
+<main>
+  <!-- Step 1: sign in with a GitHub key -->
+  <section id="login" class="note" hidden>
+    <h2>はじめに（最初の1回だけ）</h2>
+    <p>このページから写真を追加・削除すると、サイトのバインダーが自動で更新されます。そのために GitHub の「鍵（トークン）」を1回だけ入れてください。鍵はこのスマホの中にだけ保存されます。</p>
+    <label class="field">
+      <span>GitHub トークン</span>
+      <input id="token" type="password" autocomplete="off" placeholder="github_pat_…">
+    </label>
+    <button id="login-btn" class="btn primary" type="button">はじめる</button>
+    <p id="login-status" class="status"></p>
+  </section>
+
+  <!-- Step 2: the list -->
+  <section id="app" hidden>
+    <div class="toolbar">
+      <button id="add-btn" class="btn primary" type="button">＋ 商品を追加</button>
+      <span id="count" class="count"></span>
+      <input id="search" type="search" placeholder="番号・ブランド・値段で探す">
+    </div>
+    <div id="grid" class="grid"></div>
+    <p style="margin-top:28px;font-size:13px;color:var(--dim)">
+      <button id="logout" class="btn small" type="button">このスマホから鍵を消す</button>
+    </p>
+  </section>
+
+  <p id="boot-status" class="status">読み込み中…</p>
+</main>
+
+<div id="savebar" class="savebar" hidden>
+  <span id="save-msg" class="msg"></span>
+  <button id="discard-btn" class="btn" type="button">やり直す</button>
+  <button id="save-btn" class="btn primary" type="button">保存して公開</button>
+</div>
+
+<dialog id="editor">
+  <form method="dialog" id="edit-form">
+    <h2 id="edit-title">商品を追加</h2>
+    <div class="photo-pick">
+      <img id="edit-photo" alt="">
+      <div>
+        <label class="btn" for="edit-file" id="edit-file-label">写真を選ぶ</label>
+        <input id="edit-file" type="file" accept="image/*">
+        <p style="margin:8px 0 0;font-size:13px;color:var(--dim)">縦長（3:4）に自動で切り抜きます。</p>
+      </div>
+    </div>
+    <div class="row2">
+      <label class="field"><span>値段</span><input id="f-price" inputmode="decimal" placeholder="$38"></label>
+      <label class="field"><span>ブランド</span><input id="f-brand" placeholder="Coach"></label>
+    </div>
+    <label class="field"><span>商品名（なくてもOK）</span><input id="f-name" placeholder="Y2K logo shoulder bag"></label>
+    <div class="row2">
+      <label class="field"><span>種類</span><input id="f-type" placeholder="top / bag / jeans"></label>
+      <label class="field"><span>サイズ</span><input id="f-size" placeholder="M"></label>
+    </div>
+    <div class="row2">
+      <label class="field"><span>色</span><input id="f-color" placeholder="Black"></label>
+      <label class="field"><span>状態</span><input id="f-cond" placeholder="good"></label>
+    </div>
+    <label class="field"><span>生産国（なくてもOK）</span><input id="f-origin" placeholder="Japan"></label>
+    <p id="edit-status" class="status err"></p>
+    <div class="dlg-actions">
+      <button id="remove-btn" class="btn danger" type="button">売れた・消す</button>
+      <div class="right">
+        <button class="btn" value="cancel" type="submit" formnovalidate>閉じる</button>
+        <button id="done-btn" class="btn primary" type="button">OK</button>
+      </div>
+    </div>
+  </form>
+</dialog>
+
+<script>
+const OWNER = 'yuika66la-png';
+const REPO = 'mikinoarchive.github.io';
+const BRANCH = 'main';
+const ITEMS_PATH = 'binder/items.js';
+const CARD = { w: 570, h: 760, q: 0.86 };    // big photo shown when a card is opened
+const THUMB = { w: 300, h: 400, q: 0.8 };    // small photo on the binder pages
+const TEXT_FIELDS = ['price', 'brand', 'name', 'type', 'size', 'color', 'cond', 'origin'];
+const KEY = 'mikino-binder-token';
+
+const $ = (id) => document.getElementById(id);
+const pad = (n) => String(n).padStart(3, '0');
+const store = {
+  get() { try { return localStorage.getItem(KEY) || ''; } catch (_) { return ''; } },
+  set(v) { try { localStorage.setItem(KEY, v); } catch (_) { /* private mode */ } },
+  clear() { try { localStorage.removeItem(KEY); } catch (_) { /* private mode */ } },
+};
+
+let token = store.get();
+let items = [];          // what the site has now
+let draft = [];          // what it will have after saving
+let photos = new Map();  // n -> { card: Blob, thumb: Blob, url }
+let removed = new Set(); // numbers taken out in this session
+let editing = null;      // the item open in the editor (null = new item)
+let pendingPhoto = null;
+
+/* ---------- GitHub ---------- */
+async function gh(path, opts = {}) {
+  const res = await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/${path}`, {
+    ...opts,
+    headers: {
+      Accept: 'application/vnd.github+json',
+      Authorization: `Bearer ${token}`,
+      'X-GitHub-Api-Version': '2022-11-28',
+      ...(opts.body ? { 'Content-Type': 'application/json' } : {}),
+    },
+    cache: 'no-store',
+  });
+  if (!res.ok) {
+    const err = new Error(`GitHub ${res.status}`);
+    err.status = res.status;
+    try { err.detail = (await res.json()).message; } catch (_) { /* no body */ }
+    throw err;
+  }
+  return res.status === 204 ? null : res.json();
+}
+
+const b64ToText = (b64) => new TextDecoder().decode(Uint8Array.from(atob(b64.replace(/\s/g, '')), (c) => c.charCodeAt(0)));
+function blobToB64(blob) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result).split(',')[1]);
+    r.onerror = reject;
+    r.readAsDataURL(blob);
+  });
+}
+
+function parseItems(text) {
+  const start = text.indexOf('['), end = text.lastIndexOf(']');
+  return JSON.parse(text.slice(start, end + 1));
+}
+function itemsFile(list) {
+  return 'window.BINDER_ITEMS = [' + list.map((it) => JSON.stringify(it)).join(',\n') + '];\n';
+}
+
+async function loadItems() {
+  const file = await gh(`contents/${ITEMS_PATH}?ref=${BRANCH}`);
+  items = parseItems(b64ToText(file.content));
+  draft = items.map((it) => ({ ...it }));
+  photos = new Map();
+  removed = new Set();
+}
+
+/* ---------- Photos ---------- */
+async function decode(file) {
+  if ('createImageBitmap' in window) {
+    try { return await createImageBitmap(file, { imageOrientation: 'from-image' }); } catch (_) { /* fall back */ }
+  }
+  const url = URL.createObjectURL(file);
+  const img = new Image();
+  img.src = url;
+  await img.decode();
+  return img;
+}
+function crop(src, { w, h, q }) {
+  const sw = src.width, sh = src.height, want = w / h;
+  let cw = sw, ch = sh;
+  if (sw / sh > want) cw = sh * want; else ch = sw / want;
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const x = c.getContext('2d');
+  x.imageSmoothingQuality = 'high';
+  x.drawImage(src, (sw - cw) / 2, (sh - ch) / 2, cw, ch, 0, 0, w, h);
+  return new Promise((resolve) => c.toBlob(resolve, 'image/jpeg', q));
+}
+async function preparePhoto(file) {
+  const src = await decode(file);
+  const [card, thumb] = await Promise.all([crop(src, CARD), crop(src, THUMB)]);
+  return { card, thumb, url: URL.createObjectURL(thumb) };
+}
+
+/* ---------- List ---------- */
+const label = (it) => it.name || it.brand || it.type || (it.origin ? 'Made in ' + it.origin : '') || '—';
+function thumbUrl(it) {
+  const p = photos.get(it.n);
+  if (p) return p.url;
+  return `binder/thumbs/${pad(it.n)}.jpg${it.v ? '?v=' + it.v : ''}`;
+}
+function isNew(it) { return !items.some((o) => o.n === it.n); }
+function isEdited(it) {
+  const o = items.find((x) => x.n === it.n);
+  return o && (photos.has(it.n) || JSON.stringify(o) !== JSON.stringify(it));
+}
+
+function render() {
+  const q = $('search').value.trim().toLowerCase();
+  const grid = $('grid');
+  grid.replaceChildren();
+  const shown = [...draft, ...items.filter((it) => removed.has(it.n))].sort((a, b) => b.n - a.n);
+  for (const it of shown) {
+    const hay = [pad(it.n), it.n, ...TEXT_FIELDS.map((f) => it[f] || '')].join(' ').toLowerCase();
+    if (q && !hay.includes(q)) continue;
+    const gone = removed.has(it.n) && !draft.some((d) => d.n === it.n);
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'item' + (gone ? ' removed' : '');
+    const img = document.createElement('img');
+    img.loading = 'lazy';
+    img.alt = '';
+    img.src = thumbUrl(it);
+    const meta = document.createElement('div');
+    meta.className = 'meta';
+    const t = document.createElement('b');
+    t.textContent = label(it);
+    meta.append(t, `No.${pad(it.n)}  ${it.price || ''}`);
+    b.append(img, meta);
+    const tagText = gone ? '削除' : isNew(it) ? '新しい' : isEdited(it) ? '変更' : '';
+    if (tagText) {
+      const tag = document.createElement('span');
+      tag.className = 'tag' + (tagText === '変更' ? ' edit' : '');
+      tag.textContent = tagText;
+      b.append(tag);
+    }
+    b.addEventListener('click', () => (gone ? restore(it) : openEditor(it)));
+    grid.append(b);
+  }
+  $('count').textContent = `${draft.length} 点`;
+  const changes = countChanges();
+  $('savebar').hidden = changes === 0;
+  $('save-msg').textContent = `未保存の変更 ${changes} 件`;
+}
+
+function countChanges() {
+  let n = removed.size;
+  for (const it of draft) if (isNew(it) || isEdited(it)) n++;
+  return n;
+}
+
+function restore(it) {
+  removed.delete(it.n);
+  draft.push({ ...it });
+  draft.sort((a, b) => a.n - b.n);
+  render();
+}
+
+/* ---------- Editor ---------- */
+function openEditor(it) {
+  editing = it || null;
+  pendingPhoto = null;
+  $('edit-title').textContent = it ? `No.${pad(it.n)} を編集` : '商品を追加';
+  $('edit-photo').src = it ? thumbUrl(it) : '';
+  $('edit-file-label').textContent = it ? '写真を変える' : '写真を選ぶ';
+  $('edit-file').value = '';
+  for (const f of TEXT_FIELDS) $('f-' + f).value = it ? it[f] || '' : '';
+  $('remove-btn').hidden = !it;
+  $('edit-status').textContent = '';
+  $('done-btn').disabled = false;
+  $('editor').showModal();
+}
+
+$('edit-file').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  $('done-btn').disabled = true;
+  $('edit-status').textContent = '写真を準備中…';
+  try {
+    pendingPhoto = await preparePhoto(file);
+    $('edit-photo').src = pendingPhoto.url;
+    $('edit-status').textContent = '';
+  } catch (_) {
+    $('edit-status').textContent = 'この写真は読み込めませんでした。別の写真を選んでください。';
+  }
+  $('done-btn').disabled = false;
+});
+
+function normalisePrice(v) {
+  v = v.trim();
+  return /^\d+(\.\d+)?$/.test(v) ? '$' + v : v;
+}
+
+$('done-btn').addEventListener('click', () => {
+  if (!editing && !pendingPhoto) {
+    $('edit-status').textContent = '写真を選んでください。';
+    return;
+  }
+  const values = {};
+  for (const f of TEXT_FIELDS) {
+    const v = f === 'price' ? normalisePrice($('f-' + f).value) : $('f-' + f).value.trim();
+    if (v) values[f] = v;
+  }
+  if (editing) {
+    const i = draft.findIndex((d) => d.n === editing.n);
+    const next = { n: editing.n, img: editing.img || [pad(editing.n) + '.jpg'], ...values };
+    if (pendingPhoto) { photos.set(editing.n, pendingPhoto); next.v = Date.now().toString(36); }
+    else if (editing.v) next.v = editing.v;
+    draft[i] = next;
+  } else {
+    const all = [...items, ...draft];
+    const n = all.reduce((m, it) => Math.max(m, it.n), 0) + 1;
+    photos.set(n, pendingPhoto);
+    draft.push({ n, img: [pad(n) + '.jpg'], ...values, v: Date.now().toString(36) });
+  }
+  $('editor').close();
+  render();
+});
+
+$('remove-btn').addEventListener('click', () => {
+  const n = editing.n;
+  draft = draft.filter((d) => d.n !== n);
+  photos.delete(n);
+  if (items.some((o) => o.n === n)) removed.add(n);
+  $('editor').close();
+  render();
+});
+
+$('add-btn').addEventListener('click', () => openEditor(null));
+$('search').addEventListener('input', render);
+
+/* ---------- Save: one commit with every change ---------- */
+$('discard-btn').addEventListener('click', () => {
+  if (!confirm('保存していない変更を全部取り消しますか？')) return;
+  draft = items.map((it) => ({ ...it }));
+  photos = new Map();
+  removed = new Set();
+  render();
+});
+
+$('save-btn').addEventListener('click', save);
+
+async function save() {
+  const btn = $('save-btn');
+  btn.disabled = true;
+  $('discard-btn').disabled = true;
+  const say = (t) => { $('save-msg').textContent = t; };
+  try {
+    say('保存中…（写真が多いと少し時間がかかります）');
+    const ref = await gh(`git/ref/heads/${BRANCH}`);
+    const head = ref.object.sha;
+    const commit = await gh(`git/commits/${head}`);
+
+    // Someone else changed the list since this page loaded: start over from theirs.
+    const current = parseItems(b64ToText((await gh(`contents/${ITEMS_PATH}?ref=${head}`)).content));
+    if (JSON.stringify(current) !== JSON.stringify(items)) {
+      throw Object.assign(new Error('changed'), { changed: true });
+    }
+
+    const tree = [];
+    let done = 0;
+    for (const [n, p] of photos) {
+      for (const [dir, blob] of [['cards', p.card], ['thumbs', p.thumb]]) {
+        const b = await gh('git/blobs', { method: 'POST', body: JSON.stringify({ content: await blobToB64(blob), encoding: 'base64' }) });
+        tree.push({ path: `binder/${dir}/${pad(n)}.jpg`, mode: '100644', type: 'blob', sha: b.sha });
+      }
+      say(`写真をアップロード中… ${++done} / ${photos.size}`);
+    }
+    for (const n of removed) {
+      for (const dir of ['cards', 'thumbs']) tree.push({ path: `binder/${dir}/${pad(n)}.jpg`, mode: '100644', type: 'blob', sha: null });
+    }
+    const list = [...draft].sort((a, b) => a.n - b.n);
+    tree.push({ path: ITEMS_PATH, mode: '100644', type: 'blob', content: itemsFile(list) });
+
+    const added = draft.filter(isNew).length, edited = draft.filter(isEdited).length;
+    const parts = [added && `add ${added}`, edited && `update ${edited}`, removed.size && `remove ${removed.size}`].filter(Boolean);
+    const newTree = await gh('git/trees', { method: 'POST', body: JSON.stringify({ base_tree: commit.tree.sha, tree }) });
+    const newCommit = await gh('git/commits', {
+      method: 'POST',
+      body: JSON.stringify({ message: `Binder: ${parts.join(', ')} (from Binder Manager)`, tree: newTree.sha, parents: [head] }),
+    });
+    await gh(`git/refs/heads/${BRANCH}`, { method: 'PATCH', body: JSON.stringify({ sha: newCommit.sha }) });
+
+    items = list.map((it) => ({ ...it }));
+    draft = list.map((it) => ({ ...it }));
+    removed = new Set();
+    // keep the new photos on screen until the site has the new files
+    render();
+    $('savebar').hidden = false;
+    say('保存しました！1〜2分でサイトに反映されます。');
+    setTimeout(() => { if (countChanges() === 0) $('savebar').hidden = true; }, 8000);
+  } catch (e) {
+    if (e.changed) {
+      say('別の場所でバインダーが更新されていました。ページを読み込み直してから、もう一度やってください。');
+    } else if (e.status === 401 || e.status === 403 || e.status === 404) {
+      say('鍵（トークン）が使えませんでした。期限切れか、書き込みの許可がないかもしれません。');
+    } else {
+      say('保存できませんでした。電波のいい所でもう一度「保存して公開」を押してください。');
+    }
+  } finally {
+    btn.disabled = false;
+    $('discard-btn').disabled = false;
+  }
+}
+
+/* ---------- Start ---------- */
+window.addEventListener('beforeunload', (e) => {
+  if (countChanges() > 0) { e.preventDefault(); e.returnValue = ''; }
+});
+
+$('logout').addEventListener('click', () => {
+  if (!confirm('このスマホから鍵を消しますか？次に使う時はまた入力が必要です。')) return;
+  store.clear();
+  location.reload();
+});
+
+$('login-btn').addEventListener('click', async () => {
+  token = $('token').value.trim();
+  if (!token) return;
+  $('login-status').className = 'status';
+  $('login-status').textContent = '確認中…';
+  try {
+    const repo = await gh('');
+    if (!repo.permissions || !repo.permissions.push) throw Object.assign(new Error('read only'), { status: 403 });
+    store.set(token);
+    await boot();
+  } catch (e) {
+    $('login-status').className = 'status err';
+    $('login-status').textContent = e.status === 403
+      ? 'この鍵には書き込みの許可がありません。作るときに「Contents」を「Read and write」にしてください。'
+      : 'この鍵は使えませんでした。コピーしたものをもう一度貼り付けてみてください。';
+  }
+});
+
+async function boot() {
+  $('boot-status').hidden = false;
+  if (!token) {
+    $('boot-status').hidden = true;
+    $('login').hidden = false;
+    return;
+  }
+  try {
+    await loadItems();
+    $('login').hidden = true;
+    $('app').hidden = false;
+    $('boot-status').hidden = true;
+    render();
+  } catch (e) {
+    if (e.status === 401) {
+      store.clear();
+      token = '';
+      $('boot-status').hidden = true;
+      $('login').hidden = false;
+      $('login-status').className = 'status err';
+      $('login-status').textContent = '鍵の期限が切れていました。新しい鍵を入れてください。';
+    } else {
+      $('boot-status').className = 'status err';
+      $('boot-status').textContent = '読み込めませんでした。電波を確認してページを読み込み直してください。';
+    }
+  }
+}
+boot();
+</script>
+</body>
+</html>

@@ -491,6 +491,7 @@
       return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
     });
   }
+  function ver(it) { return it.v ? "?v=" + it.v : ""; }
   function pad(n) { return String(n).padStart(3, '0'); }
   function title(it) { return it.name || it.brand || it.origin || 'Archive piece'; }
 
@@ -505,7 +506,7 @@
   }
 
   function cardHTML(it, full) {
-    var src = (full ? 'binder/cards/' : 'binder/thumbs/') + pad(it.n) + '.jpg';
+    var src = (full ? 'binder/cards/' : 'binder/thumbs/') + pad(it.n) + '.jpg' + ver(it);
     var alt = title(it) + ', card ' + it.n;
     return '<div class="card' + (it.brand ? ' signature' : '') + '">' +
       '<div class="card-head"><span class="card-mark">mikino</span><span>No. ' + pad(it.n) + '</span></div>' +
@@ -530,7 +531,7 @@
     var first = firstPageOf(v) * perPage();
     var count = perPage() * (isSpread() ? 2 : 1);
     items.slice(first, first + count).forEach(function (it) {
-      new Image().src = 'binder/thumbs/' + pad(it.n) + '.jpg';
+      new Image().src = 'binder/thumbs/' + pad(it.n) + '.jpg' + ver(it);
     });
   }
 
@@ -657,7 +658,7 @@
       '<a class="shop-link" target="_blank" rel="noopener" href="' + esc(it.url || SHOP_URL) + '">' +
       (it.url ? 'View on Depop' : 'Visit the shop on Depop') + '</a>';
 
-    new Image().src = 'binder/cards/' + pad(items[(current + 1) % items.length].n) + '.jpg';
+    new Image().src = 'binder/cards/' + pad(items[(current + 1) % items.length].n) + '.jpg' + ver(items[(current + 1) % items.length]);
   }
 
   function openViewer(i) {
