@@ -205,7 +205,7 @@ let pendingPhoto = null;
 
 /* ---------- GitHub ---------- */
 async function gh(path, opts = {}) {
-  const res = await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/${path}`, {
+  const res = await fetch(`https://api.github.com/repos/${OWNER}/${REPO}${path ? '/' + path : ''}`, {
     ...opts,
     headers: {
       Accept: 'application/vnd.github+json',
@@ -507,14 +507,19 @@ $('login-btn').addEventListener('click', async () => {
   $('login-status').textContent = '確認中…';
   try {
     const repo = await gh('');
-    if (!repo.permissions || !repo.permissions.push) throw Object.assign(new Error('read only'), { status: 403 });
+    // Fine-grained keys may leave permissions out; then the first save is the real check.
+    if (repo.permissions && repo.permissions.push === false) throw Object.assign(new Error('read only'), { status: 403 });
     store.set(token);
     await boot();
   } catch (e) {
     $('login-status').className = 'status err';
     $('login-status').textContent = e.status === 403
       ? 'この鍵には書き込みの許可がありません。作るときに「Contents」を「Read and write」にしてください。'
-      : 'この鍵は使えませんでした。コピーしたものをもう一度貼り付けてみてください。';
+      : e.status === 401
+        ? 'この鍵は使えませんでした。コピーしたものをもう一度貼り付けてみてください。'
+        : e.status === 404
+          ? 'この鍵ではバインダーのリポジトリが見えません。作るときに mikinoarchive.github.io を選んだか確認してください。'
+          : `確認できませんでした（${e.status || '通信エラー'}）。電波を確認してもう一度押してください。`;
   }
 });
 
