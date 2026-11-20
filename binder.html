@@ -266,6 +266,7 @@ const SHOP_URL = 'https://depop.com/mikinoarchivejp';
 const $ = (id) => document.getElementById(id);
 const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const pad = (n) => String(n).padStart(3, '0');
+const ver = (it) => (it.v ? '?v=' + it.v : '');   // changes when a photo is replaced, so phones fetch the new one
 const title = (it) => it.name || it.brand || (it.origin ? 'Made in ' + it.origin : '') || (it.type ? it.type[0].toUpperCase() + it.type.slice(1) : '') || 'Archive piece';
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 const easeInOut = (t) => (t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
@@ -894,7 +895,7 @@ function ensureCard(i) {
   const st = cards[i];
   if (st.tex || st.loading) return;
   st.loading = true;
-  loadImage('binder/thumbs/' + pad(st.it.n) + '.jpg').catch(() => null).then((img) => {
+  loadImage('binder/thumbs/' + pad(st.it.n) + '.jpg' + ver(st.it)).catch(() => null).then((img) => {
     if (!st.loading) return;     // evicted while loading
     const [c, x] = makeCanvas(360, 504);
     drawCard(x, st.it, img, 360, 504);
@@ -1020,7 +1021,7 @@ function cardPoseInCamera(st) {
 
 function loadHiRes(entry) {
   const st = cards[entry.i];
-  loadImage('binder/cards/' + pad(st.it.n) + '.jpg').catch(() => null).then((img) => {
+  loadImage('binder/cards/' + pad(st.it.n) + '.jpg' + ver(st.it)).catch(() => null).then((img) => {
     if (insp !== entry || entry.i !== st.i) return;
     const [c, x] = makeCanvas(720, 1008);
     drawCard(x, st.it, img, 720, 1008);
