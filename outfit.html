@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>outfit maker — mikinoarchive</title>
+<meta name="description" content="Pick cards from the mikinoarchive binder and style them on a 3D dress form.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Alex+Brush&family=EB+Garamond:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --red: #af1c17;
+    --red-deep: #7d1210;
+    --paper: #f8f5ef;
+    --sleeve: #ece6da;
+    --ink: #2b2925;
+    --muted: #7a7166;
+    --gold: #b8944f;
+    --line: rgba(43, 41, 37, .14);
+    --glass: rgba(26, 19, 14, .74);
+    --panel-w: 400px;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body {
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+    background: #a51b16;
+    color: var(--ink);
+    font: 16px/1.4 'EB Garamond', Georgia, serif;
+    -webkit-text-size-adjust: 100%;
+  }
+  button { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+  /* Stage: the 3D dress form */
+  #stage {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: var(--panel-w);
+    bottom: 0;
+    background: radial-gradient(ellipse at 50% 38%, #c22a22 0%, #a51b16 45%, #6e100d 100%);
+  }
+  #scene { display: block; width: 100%; height: 100%; touch-action: none; outline: none; }
+
+  #top {
+    position: fixed;
+    top: max(14px, env(safe-area-inset-top));
+    left: 14px;
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    padding: 7px 16px 8px;
+    border-radius: 999px;
+    background: var(--glass);
+    border: 1px solid rgba(243, 236, 224, .16);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+    color: #f3ece0;
+    z-index: 2;
+  }
+  #top a.home { font-family: 'Alex Brush', cursive; font-size: 26px; line-height: 1; color: #f1d9a4; text-decoration: none; }
+  #top span { font-size: 15px; font-style: italic; color: #b8ad9b; }
+  #top a.binder { font-size: 15px; color: #f3ece0; text-decoration: underline; text-underline-offset: 3px; text-decoration-color: rgba(243, 236, 224, .4); }
+
+  #hint {
+    position: absolute;
+    left: 50%;
+    bottom: 18px;
+    transform: translateX(-50%);
+    padding: 5px 14px;
+    border-radius: 999px;
+    background: var(--glass);
+    color: #f3ece0;
+    font-size: 15px;
+    font-style: italic;
+    white-space: nowrap;
+    pointer-events: none;
+    transition: opacity .6s;
+  }
+  #loading {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    color: #f1d9a4;
+    font-size: 20px;
+    font-style: italic;
+    pointer-events: none;
+    transition: opacity .5s;
+  }
+  #loading.done { opacity: 0; }
+  #fallback { position: absolute; inset: 0; display: grid; place-items: center; padding: 24px; color: #f3ece0; text-align: center; }
+
+  /* Panel: the outfit and the cards to pick from */
+  #panel {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: var(--panel-w);
+    display: flex;
+    flex-direction: column;
+    background: var(--paper);
+    border-left: 4px solid var(--red-deep);
+    box-shadow: -10px 0 30px -12px rgba(0, 0, 0, .45);
+  }
+
+  .look {
+    padding: 14px 16px 12px;
+    border-bottom: 1px solid var(--line);
+    background: linear-gradient(180deg, #fffdf8, var(--paper));
+  }
+  .look-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+  .look-head h1 { margin: 0; font-family: 'Alex Brush', cursive; font-weight: 400; font-size: 30px; line-height: 1; color: var(--red); }
+  .total { font-size: 17px; font-variant-numeric: tabular-nums; color: var(--muted); }
+  .total b { color: var(--ink); font-weight: 500; font-size: 21px; }
+  .worn { display: flex; gap: 8px; margin-top: 10px; min-height: 66px; overflow-x: auto; scrollbar-width: none; }
+  .worn::-webkit-scrollbar { display: none; }
+  .worn .empty { align-self: center; color: var(--muted); font-style: italic; font-size: 15px; }
+  .chip {
+    position: relative;
+    flex: 0 0 auto;
+    width: 50px;
+    height: 66px;
+    padding: 0;
+    border: 2px solid var(--red);
+    border-radius: 6px;
+    background: #e8e4de center / cover no-repeat;
+    cursor: pointer;
+  }
+  .chip::after {
+    content: '×';
+    position: absolute;
+    top: -7px;
+    right: -7px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--red);
+    color: #fff;
+    font-size: 14px;
+    line-height: 17px;
+    text-align: center;
+  }
+  .look-actions { display: flex; gap: 8px; margin-top: 10px; }
+  .look-actions button {
+    flex: 1;
+    padding: 7px 8px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: #fff;
+    font-size: 15px;
+    cursor: pointer;
+  }
+  .look-actions button:hover { border-color: var(--red); color: var(--red); }
+  .look-actions .primary { background: var(--red); border-color: var(--red); color: #fff; }
+  .look-actions .primary:hover { background: var(--red-deep); color: #fff; }
+
+  .tabs {
+    display: flex;
+    gap: 6px;
+    padding: 10px 16px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    border-bottom: 1px solid var(--line);
+  }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tabs button {
+    flex: 0 0 auto;
+    padding: 5px 12px 6px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: transparent;
+    font-size: 15px;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+  .tabs button[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+
+  .grid {
+    flex: 1;
+    overflow-y: auto;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    align-content: start;
+    gap: 10px;
+    padding: 12px 16px calc(16px + env(safe-area-inset-bottom));
+    background: var(--sleeve);
+  }
+  .card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    padding: 5px 5px 4px;
+    border: 2px solid var(--red);
+    border-radius: 7px;
+    background: linear-gradient(160deg, #fdfbf6, #f6f1e7);
+    text-align: left;
+    cursor: pointer;
+    transition: transform .15s, box-shadow .15s;
+  }
+  .card.sig { border-color: var(--gold); background: linear-gradient(135deg, #fffaf0, #f3e2c0 50%, #fffaf0); }
+  .card:hover { transform: translateY(-2px); box-shadow: 0 6px 14px -8px rgba(0, 0, 0, .5); }
+  .card .no { font-size: 11px; color: var(--muted); letter-spacing: .04em; }
+  .card img { width: 100%; aspect-ratio: 3 / 4; object-fit: cover; border-radius: 3px; background: #e8e4de; display: block; margin-top: 2px; }
+  .card .foot { display: flex; justify-content: space-between; gap: 4px; margin-top: 3px; font-size: 13px; line-height: 1.2; }
+  .card .name { font-style: italic; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .card .price { font-weight: 500; font-variant-numeric: tabular-nums; }
+  .card[aria-pressed="true"] { box-shadow: 0 0 0 3px var(--paper), 0 0 0 6px var(--red); }
+  .card[aria-pressed="true"]::after {
+    content: 'wearing';
+    position: absolute;
+    top: 24px;
+    left: 50%;
+    transform: translateX(-50%) rotate(-6deg);
+    padding: 1px 8px 2px;
+    border-radius: 999px;
+    background: var(--red);
+    color: #fff;
+    font-size: 13px;
+    font-style: italic;
+  }
+
+  #toast {
+    position: fixed;
+    left: 50%;
+    top: 20px;
+    transform: translateX(-50%);
+    padding: 7px 16px;
+    border-radius: 999px;
+    background: var(--ink);
+    color: var(--paper);
+    font-size: 15px;
+    z-index: 5;
+    transition: opacity .3s;
+  }
+
+  /* Phones: dress form on top, cards underneath */
+  @media (max-width: 760px) {
+    #stage { right: 0; bottom: 46%; }
+    #panel { top: auto; left: 0; width: auto; height: 46%; border-left: 0; border-top: 4px solid var(--red-deep); box-shadow: 0 -10px 30px -12px rgba(0, 0, 0, .45); }
+    .look { padding: 10px 12px 8px; }
+    .look-head h1 { font-size: 24px; }
+    .worn { min-height: 54px; margin-top: 6px; }
+    .chip { width: 40px; height: 54px; }
+    .look-actions { margin-top: 8px; }
+    .look-actions button { padding: 5px 6px; font-size: 14px; }
+    .tabs { padding: 8px 12px; }
+    .grid { grid-template-columns: repeat(4, 1fr); gap: 8px; padding: 10px 12px calc(14px + env(safe-area-inset-bottom)); }
+    .card .foot { font-size: 12px; }
+    .card .name { display: none; }
+    #hint { bottom: 10px; font-size: 14px; }
+    #top span { display: none; }
+  }
+  @media (max-width: 380px) { .grid { grid-template-columns: repeat(3, 1fr); } }
+
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+</style>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+
+<header id="top">
+  <a class="home" href="./">mikinoarchive</a>
+  <span>outfit maker</span>
+  <a class="binder" href="binder.html">binder</a>
+</header>
+
+<main id="stage">
+  <canvas id="scene" aria-label="3D dress form wearing the outfit you pick. Drag to turn it around."></canvas>
+  <div id="hint">drag to spin · pinch or scroll to zoom</div>
+  <div id="loading">dressing the form&hellip;</div>
+  <div id="fallback" hidden><p>The 3D dress form needs WebGL, which this browser doesn&rsquo;t have turned on. You can still pick pieces and share the outfit link.</p></div>
+</main>
+
+<aside id="panel" aria-label="Outfit and cards">
+  <section class="look" aria-label="Your outfit">
+    <div class="look-head">
+      <h1>your outfit</h1>
+      <div class="total" aria-live="polite"><span id="count">0 pieces</span> · <b id="total">$0</b></div>
+    </div>
+    <div class="worn" id="worn"></div>
+    <div class="look-actions">
+      <button id="shuffle" type="button">Shuffle</button>
+      <button id="clear" type="button">Clear</button>
+      <button id="share" type="button" class="primary">Share look</button>
+    </div>
+  </section>
+  <nav class="tabs" id="tabs" aria-label="Clothing types"></nav>
+  <div class="grid" id="grid" role="list"></div>
+</aside>
+
+<div id="toast" role="status" hidden></div>
+
+<script src="binder/items.js"></script>
+<script src="binder/categories.js"></script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+const $ = (id) => document.getElementById(id);
+const items = (window.BINDER_ITEMS || []).filter((it) => it.cat);
+const CATS = (window.BINDER_CATS || []).filter(([id]) => items.some((it) => it.cat === id));
+const SHOP_URL = 'https://depop.com/mikinoarchivejp';
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const pad = (n) => String(n).padStart(3, '0');
+const ver = (it) => (it.v ? '?v=' + it.v : '');
+const thumb = (it) => 'binder/thumbs/' + pad(it.n) + '.jpg' + ver(it);
+const catLabel = (id) => (CATS.find((c) => c[0] === id) || [])[1] || '';
+const title = (it) => it.name || it.brand || (it.origin ? 'Made in ' + it.origin : '') || (it.type ? it.type[0].toUpperCase() + it.type.slice(1) : '') || catLabel(it.cat) || 'Archive piece';
+const priceOf = (it) => parseFloat(String(it.price || '').replace(/[^0-9.]/g, '')) || 0;
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+/* ---------- How each piece sits on the form ---------- */
+// Where each category goes. A dress takes the place of a top and a bottom.
+const SLOT = { tanks: 'top', tees: 'top', tops: 'top', shirts: 'top', knits: 'outer', jackets: 'outer', dresses: 'dress',
+  skirts: 'bottom', pants: 'bottom', shorts: 'bottom', hats: 'hat', shoes: 'shoes', bags: 'bag', accessories: 'acc' };
+const SLOT_ORDER = ['hat', 'acc', 'outer', 'top', 'dress', 'bottom', 'bag', 'shoes'];
+// Sleeve length by category, with the pieces that differ (read from their photos).
+const SLEEVE_DEFAULT = { tanks: 'none', tees: 'short', tops: 'long', shirts: 'long', knits: 'long', jackets: 'long', dresses: 'none' };
+const SLEEVE = { 14: 'short', 26: 'short', 30: 'short', 46: 'short', 34: 'none', 31: 'short', 52: 'short', 66: 'short', 95: 'short',
+  114: 'short', 116: 'short', 57: 'none', 32: 'long', 62: 'short' };
+const OPEN_FRONT = new Set([8, 57, 58, 59, 61, 72, 75, 79, 115]);
+const SKIRT_HEM = { 15: 0.14, 20: 0.66, 47: 0.52, 48: 0.44, 105: 0.5 };
+const PANTS_HEM = { 68: 0.3 };
+// Part of each photo to use as the fabric (fractions of the photo: x0, y0, x1, y1).
+const CROP_DEFAULT = {
+  tanks: [.32, .44, .68, .66], tees: [.3, .44, .7, .68], tops: [.3, .42, .7, .68], shirts: [.3, .42, .7, .68],
+  knits: [.12, .4, .32, .7], jackets: [.12, .4, .32, .7], dresses: [.32, .48, .68, .78], skirts: [.3, .55, .7, .85],
+  pants: [.3, .35, .65, .7], shorts: [.3, .35, .7, .65], bags: [.3, .35, .7, .7], accessories: [.45, .25, .75, .6],
+  hats: [.3, .1, .7, .4], shoes: [.3, .6, .7, .9],
+};
+const CROP = { 2: [.2, .25, .75, .65], 13: [.25, .3, .6, .7], 15: [.4, .45, .62, .8], 20: [.35, .62, .75, .85],
+  21: [.52, .15, .72, .55], 49: [.4, .2, .7, .65], 106: [.35, .45, .65, .75], 107: [.3, .4, .7, .7] };
+const sleeveOf = (it) => SLEEVE[it.n] || SLEEVE_DEFAULT[it.cat] || 'none';
+
+/* ---------- Outfit state ---------- */
+const worn = {};   // slot -> item
+let activeTab = '';
+
+function wear(it, quiet) {
+  const slot = SLOT[it.cat];
+  if (!slot) return;
+  if (worn[slot] && worn[slot].n === it.n) { takeOff(slot); return; }
+  if (slot === 'dress') { takeOff('top', true); takeOff('bottom', true); }
+  if (slot === 'top' || slot === 'bottom') takeOff('dress', true);
+  takeOff(slot, true);
+  worn[slot] = it;
+  if (dress) dress.put(slot, it, quiet);
+  changed();
+}
+function takeOff(slot, inner) {
+  if (!worn[slot]) return;
+  delete worn[slot];
+  if (dress) dress.remove(slot);
+  if (!inner) changed();
+}
+function changed() {
+  const list = SLOT_ORDER.map((s) => worn[s]).filter(Boolean);
+  const w = $('worn');
+  w.innerHTML = list.length ? '' : '<span class="empty">Tap a card to put it on the form.</span>';
+  for (const it of list) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'chip';
+    b.style.backgroundImage = `url("${thumb(it)}")`;
+    b.setAttribute('aria-label', `Take off No. ${pad(it.n)}, ${title(it)}`);
+    b.title = `No. ${pad(it.n)} · ${title(it)}${it.price ? ' · ' + it.price : ''}`;
+    b.addEventListener('click', () => takeOff(SLOT[it.cat]));
+    w.appendChild(b);
+  }
+  $('count').textContent = list.length === 1 ? '1 piece' : list.length + ' pieces';
+  const total = list.reduce((s, it) => s + priceOf(it), 0);
+  $('total').textContent = '$' + (Number.isInteger(total) ? total : total.toFixed(2));
+  const on = new Set(list.map((it) => it.n));
+  for (const c of $('grid').children) c.setAttribute('aria-pressed', on.has(Number(c.dataset.n)));
+  const hash = list.length ? '#look=' + list.map((it) => it.n).join(',') : ' ';
+  history.replaceState(null, '', hash === ' ' ? location.pathname + location.search : hash);
+}
+
+/* ---------- Cards ---------- */
+function renderTabs() {
+  const tabs = $('tabs');
+  const all = [['', 'All']].concat(CATS.map(([id, label]) => [id, label]));
+  tabs.innerHTML = '';
+  for (const [id, label] of all) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = label;
+    b.setAttribute('aria-pressed', id === activeTab);
+    b.addEventListener('click', () => { activeTab = id; renderTabs(); renderGrid(); $('grid').scrollTop = 0; });
+    tabs.appendChild(b);
+  }
+}
+function renderGrid() {
+  const grid = $('grid');
+  grid.innerHTML = '';
+  for (const it of items) {
+    if (activeTab && it.cat !== activeTab) continue;
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'card' + (it.brand ? ' sig' : '');
+    b.dataset.n = it.n;
+    b.setAttribute('role', 'listitem');
+    b.setAttribute('aria-label', `No. ${pad(it.n)}, ${title(it)}${it.price ? ', ' + it.price : ''}`);
+    b.innerHTML = `<span class="no">No. ${pad(it.n)}</span><img src="${thumb(it)}" alt="" loading="lazy">` +
+      `<span class="foot"><span class="name">${esc(title(it))}</span><span class="price">${esc(it.price || '')}</span></span>`;
+    b.addEventListener('click', () => wear(it));
+    grid.appendChild(b);
+  }
+  changed();
+}
+
+function pick(list) { return list[Math.floor(Math.random() * list.length)]; }
+function shuffle() {
+  const by = (slot) => items.filter((it) => SLOT[it.cat] === slot);
+  for (const s of Object.keys(worn)) takeOff(s, true);
+  const dresses = by('dress');
+  if (dresses.length && Math.random() < .2) wear(pick(dresses), true);
+  else {
+    if (by('top').length) wear(pick(by('top')), true);
+    if (by('bottom').length) wear(pick(by('bottom')), true);
+  }
+  for (const [slot, chance] of [['outer', .4], ['bag', .35], ['acc', .2], ['hat', .3], ['shoes', .6]]) {
+    if (by(slot).length && Math.random() < chance) wear(pick(by(slot)), true);
+  }
+  changed();
+}
+
+let toastTimer;
+function toast(msg) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.hidden = true; }, 2200);
+}
+
+$('shuffle').addEventListener('click', shuffle);
+$('clear').addEventListener('click', () => { for (const s of Object.keys(worn)) takeOff(s, true); changed(); });
+$('share').addEventListener('click', async () => {
+  if (!Object.keys(worn).length) { toast('Put something on the form first'); return; }
+  const url = location.href;
+  try {
+    if (navigator.share) { await navigator.share({ title: 'My mikinoarchive outfit', url }); return; }
+    await navigator.clipboard.writeText(url);
+    toast('Link copied');
+  } catch (e) {
+    if (e && e.name === 'AbortError') return;
+    toast('Copy this page’s address to share it');
+  }
+});
+
+/* ---------- 3D dress form ---------- */
+let dress = null;
+
+function startScene() {
+  const stage = $('stage');
+  const canvas = $('scene');
+  let renderer;
+  try {
+    renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'high-performance' });
+  } catch (err) {
+    $('loading').hidden = true;
+    $('fallback').hidden = false;
+    $('hint').hidden = true;
+    return null;
+  }
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.toneMapping = THREE.NeutralToneMapping;
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+  let needsRender = true;
+  const scene = new THREE.Scene();
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+  scene.environmentIntensity = 0.55;
+
+  const camera = new THREE.PerspectiveCamera(30, 1, 0.05, 50);
+  const controls = new OrbitControls(camera, canvas);
+  controls.target.set(0, 0.9, 0);
+  controls.enablePan = false;
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.08;
+  controls.minDistance = 1.1;
+  controls.maxDistance = 7;
+  controls.minPolarAngle = 0.55;
+  controls.maxPolarAngle = 1.72;
+  controls.autoRotate = !reduceMotion;
+  controls.autoRotateSpeed = 1.1;
+  let idleTimer;
+  controls.addEventListener('start', () => {
+    controls.autoRotate = false;
+    clearTimeout(idleTimer);
+    $('hint').style.opacity = 0;
+  });
+  controls.addEventListener('end', () => {
+    clearTimeout(idleTimer);
+    if (!reduceMotion) idleTimer = setTimeout(() => { controls.autoRotate = true; }, 6000);
+  });
+
+  // Lights
+  scene.add(new THREE.HemisphereLight(0xfff4e6, 0x6b2a1e, 1.1));
+  const key = new THREE.DirectionalLight(0xfff1df, 2.2);
+  key.position.set(1.6, 3.2, 2.4);
+  key.castShadow = true;
+  key.shadow.mapSize.set(1024, 1024);
+  key.shadow.camera.left = -1.2; key.shadow.camera.right = 1.2;
+  key.shadow.camera.top = 2.2; key.shadow.camera.bottom = -0.2;
+  key.shadow.bias = -0.0004;
+  key.shadow.normalBias = 0.02;
+  scene.add(key);
+  const rim = new THREE.DirectionalLight(0xffd2b0, 1.0);
+  rim.position.set(-2, 2, -2.5);
+  scene.add(rim);
+
+  // Floor: a cream rug on the red room
+  const rug = new THREE.Mesh(new THREE.CircleGeometry(1.15, 64), new THREE.MeshStandardMaterial({ color: 0xf3ebdc, roughness: 1 }));
+  rug.rotation.x = -Math.PI / 2;
+  rug.receiveShadow = true;
+  scene.add(rug);
+  const rugEdge = new THREE.Mesh(new THREE.RingGeometry(1.15, 1.19, 64), new THREE.MeshStandardMaterial({ color: 0xb8944f, roughness: .6, metalness: .3 }));
+  rugEdge.rotation.x = -Math.PI / 2;
+  rugEdge.position.y = 0.001;
+  scene.add(rugEdge);
+
+  /* Dress form body. Units are metres. Depth is squashed so the body is oval, not round. */
+  const ZS = 0.74;
+  const smooth = (pts, n) => new THREE.SplineCurve(pts.map(([r, y]) => new THREE.Vector2(r, y))).getPoints(n);
+  const lookup = (pts) => (y) => {
+    if (y <= pts[0].y) return pts[0].x;
+    for (let i = 1; i < pts.length; i++) {
+      if (pts[i].y >= y) {
+        const a = pts[i - 1], b = pts[i], t = (y - a.y) / (b.y - a.y || 1);
+        return a.x + (b.x - a.x) * t;
+      }
+    }
+    return pts[pts.length - 1].x;
+  };
+  const torsoPts = smooth([[0, .8], [.1, .81], [.16, .84], [.185, .9], [.172, .98], [.138, 1.06], [.146, 1.14], [.168, 1.22],
+    [.162, 1.29], [.166, 1.35], [.148, 1.4], [.1, 1.435], [.056, 1.455], [.048, 1.5], [.046, 1.545]], 160);
+  const torsoR = lookup(torsoPts);
+  const LEG_X = 0.085;
+  const legPts = smooth([[0, .055], [.028, .065], [.031, .1], [.044, .22], [.052, .34], [.046, .46], [.05, .52],
+    [.066, .66], [.074, .78], [.07, .87]], 120);
+  const legR = lookup(legPts);
+  const ARM_ANGLE = 0.16, SHOULDER = new THREE.Vector3(0.172, 1.355, 0);
+  // Arm profile along its own downward axis (y = minus the distance from the shoulder).
+  const armPts = smooth([[0, -.62], [.022, -.605], [.03, -.58], [.024, -.56], [.034, -.42], [.031, -.3], [.04, -.17],
+    [.046, -.06], [.044, 0], [0, .035]], 120);
+  const armR = lookup(armPts);
+
+  const bodyMat = new THREE.MeshStandardMaterial({ color: 0xe2cfb2, roughness: .7 });
+  const woodMat = new THREE.MeshStandardMaterial({ color: 0x6b4428, roughness: .45 });
+  const form = new THREE.Group();
+  scene.add(form);
+  const add = (geo, mat, parent = form) => {
+    const m = new THREE.Mesh(geo, mat);
+    m.castShadow = m.receiveShadow = true;
+    parent.add(m);
+    return m;
+  };
+  const torso = add(new THREE.LatheGeometry(torsoPts, 56), bodyMat);
+  torso.scale.z = ZS;
+  const head = add(new THREE.SphereGeometry(0.095, 40, 28), bodyMat);
+  head.position.y = 1.645;
+  head.scale.set(0.9, 1.18, 0.98);
+  for (const side of [-1, 1]) {
+    const leg = add(new THREE.LatheGeometry(legPts, 32), bodyMat);
+    leg.position.x = side * LEG_X;
+    leg.scale.z = 0.92;
+    const foot = add(new THREE.SphereGeometry(1, 20, 14), bodyMat);
+    foot.position.set(side * LEG_X, 0.062, 0.035);
+    foot.scale.set(0.034, 0.026, 0.075);
+  }
+  const arms = {};
+  for (const side of [-1, 1]) {
+    const g = new THREE.Group();
+    g.position.set(side * SHOULDER.x, SHOULDER.y, 0);
+    g.rotation.z = side * ARM_ANGLE;
+    form.add(g);
+    add(new THREE.LatheGeometry(armPts, 28), bodyMat, g);
+    const cap = add(new THREE.SphereGeometry(0.05, 24, 16), bodyMat, g);
+    cap.scale.set(1, 1, .9);
+    arms[side] = g;
+  }
+  const base = add(new THREE.CylinderGeometry(0.3, 0.32, 0.035, 64), woodMat);
+  base.position.y = 0.0175;
+  const baseTop = add(new THREE.CylinderGeometry(0.27, 0.27, 0.004, 64), new THREE.MeshStandardMaterial({ color: 0xb8944f, roughness: .35, metalness: .6 }));
+  baseTop.position.y = 0.037;
+
+  /* Fabric from photos */
+  const fabricCache = new Map();
+  function fabric(it) {
+    if (fabricCache.has(it.n)) return fabricCache.get(it.n);
+    const c = document.createElement('canvas');
+    c.width = c.height = 256;
+    const x = c.getContext('2d');
+    x.fillStyle = '#d9d2c4';
+    x.fillRect(0, 0, 256, 256);
+    const tex = new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.wrapS = tex.wrapT = THREE.MirroredRepeatWrapping;
+    tex.anisotropy = 4;
+    const entry = { tex, color: new THREE.Color(0xd9d2c4), users: new Set() };
+    const img = new Image();
+    img.onload = () => {
+      const [x0, y0, x1, y1] = CROP[it.n] || CROP_DEFAULT[it.cat] || [.3, .4, .7, .7];
+      x.drawImage(img, x0 * img.width, y0 * img.height, (x1 - x0) * img.width, (y1 - y0) * img.height, 0, 0, 256, 256);
+      const d = x.getImageData(0, 0, 256, 256).data;
+      let r = 0, g = 0, b = 0, k = 0;
+      for (let i = 0; i < d.length; i += 64) { r += d[i]; g += d[i + 1]; b += d[i + 2]; k++; }
+      entry.color.setRGB(r / k / 255, g / k / 255, b / k / 255, THREE.SRGBColorSpace);
+      tex.needsUpdate = true;
+      for (const u of entry.users) { u.needsUpdate = true; if (u.userData.plain) u.color.copy(entry.color); }
+      needsRender = true;
+    };
+    img.src = thumb(it);
+    fabricCache.set(it.n, entry);
+    return entry;
+  }
+
+  // One material per part, so each can tile the fabric to suit its size.
+  function mat(entry, rx, ry, plain) {
+    const t = entry.tex.clone();
+    t.repeat.set(rx, ry);
+    t.needsUpdate = true;
+    const m = new THREE.MeshStandardMaterial({ map: plain ? null : t, color: plain ? entry.color.clone() : 0xffffff, roughness: .82, side: THREE.DoubleSide, transparent: true, opacity: 1 });
+    m.userData.plain = plain;
+    m.userData.tex = t;
+    entry.users.add(m);
+    return m;
+  }
+
+  // A tube around the torso from y0 up to y1. `flare` widens it below the hips (skirts, dresses).
+  function torsoTube(y0, y1, off, flare, gap) {
+    const pts = [];
+    const n = Math.max(12, Math.round((y1 - y0) * 90));
+    for (let i = 0; i <= n; i++) {
+      const y = y0 + (y1 - y0) * i / n;
+      let r = (y > 0.8 ? torsoR(y) : 0) + off;
+      if (flare) r = Math.max(r, flare(y));
+      pts.push(new THREE.Vector2(r, y));
+    }
+    const geo = gap ? new THREE.LatheGeometry(pts, 56, gap / 2, Math.PI * 2 - gap) : new THREE.LatheGeometry(pts, 56);
+    return geo;
+  }
+  const aLine = (off, k, from = 0.93) => (y) => (y < from ? torsoR(from) + off + (from - y) * k : 0);
+  function legTube(y0, y1, off, widen = 0) {
+    const pts = [];
+    const n = Math.max(10, Math.round((y1 - y0) * 70));
+    for (let i = 0; i <= n; i++) {
+      const y = y0 + (y1 - y0) * i / n;
+      pts.push(new THREE.Vector2(legR(y) + off + widen * (0.5 - Math.min(0.5, y - 0.1)), y));
+    }
+    return new THREE.LatheGeometry(pts, 32);
+  }
+  function sleeveTube(len, off) {
+    const pts = [];
+    const n = Math.max(8, Math.round(len * 60));
+    for (let i = 0; i <= n; i++) {
+      const y = -len + (len + 0.0) * i / n;
+      pts.push(new THREE.Vector2(armR(y) + off, y));
+    }
+    return new THREE.LatheGeometry(pts, 28);
+  }
+
+  // Build the meshes for one piece. Returns [{mesh, parent}] so arms can carry sleeves.
+  function build(it) {
+    const f = fabric(it);
+    const parts = [];
+    const put = (geo, m, parent = form, setup) => {
+      const mesh = new THREE.Mesh(geo, m);
+      mesh.castShadow = mesh.receiveShadow = true;
+      if (setup) setup(mesh);
+      parent.add(mesh);
+      parts.push(mesh);
+      return mesh;
+    };
+    const oval = (mesh) => { mesh.scale.z = ZS; };
+    const sleeves = (len, off, m) => {
+      if (len <= 0) return;
+      for (const side of [-1, 1]) {
+        put(sleeveTube(len, off), m, arms[side]);
+        put(new THREE.SphereGeometry(0.05 + off, 24, 16, 0, Math.PI * 2, 0, Math.PI / 2 + 0.3), m, arms[side], (s) => { s.scale.z = 0.92; });
+      }
+    };
+    const straps = (y, off, m) => {
+      for (const side of [-1, 1]) {
+        put(new THREE.TorusGeometry(torsoR(y) * ZS + off, 0.007, 6, 24, Math.PI), m, form, (s) => {
+          s.position.set(side * 0.085, y - 0.005, 0);
+          s.rotation.y = Math.PI / 2;
+          s.scale.y = 0.55;
+        });
+      }
+    };
+    const collar = (y, off, m) => {
+      put(new THREE.TorusGeometry(torsoR(y) + off + 0.012, 0.013, 8, 40), m, form, (s) => {
+        s.position.y = y + 0.006;
+        s.rotation.x = Math.PI / 2 - 0.12;
+        s.scale.y = 0.85;
+      });
+    };
+    const sleeveLen = { none: 0, short: 0.15, long: 0.55 }[sleeveOf(it)];
+    switch (it.cat) {
+      case 'tanks':
+      case 'tees':
+      case 'tops':
+      case 'shirts': {
+        const off = 0.013, m = mat(f, 4, 1.6);
+        if (sleeveLen === 0) {
+          put(torsoTube(0.88, 1.29, off), m, form, oval);
+          if (it.n !== 34) straps(1.29, off, m);
+        } else {
+          const top = it.cat === 'tops' ? 1.435 : 1.452;
+          put(torsoTube(0.88, top, off), m, form, oval);
+          sleeves(sleeveLen, off + 0.004, mat(f, 1.5, sleeveLen * 4));
+          if (it.cat === 'shirts') collar(1.45, off, mat(f, 6, 0.4));
+        }
+        break;
+      }
+      case 'knits':
+      case 'jackets': {
+        const off = 0.03, open = OPEN_FRONT.has(it.n), m = mat(f, 4, 1.8);
+        put(torsoTube(0.83, 1.44, off, null, open ? 0.62 : 0), m, form, oval);
+        sleeves(sleeveLen, off, mat(f, 1.5, 2.2));
+        if (it.cat === 'jackets' && !open) collar(1.45, off - 0.004, mat(f, 6, 0.4));
+        break;
+      }
+      case 'dresses': {
+        const off = 0.016, m = mat(f, 4, 2.6);
+        const hem = it.n === 32 ? 0.52 : 0.58;
+        if (sleeveLen === 0) {
+          put(torsoTube(hem, 1.29, off, aLine(off, 0.32)), m, form, oval);
+          straps(1.29, off, m);
+        } else {
+          put(torsoTube(hem, 1.45, off, aLine(off, it.n === 32 ? 0.08 : 0.3)), m, form, oval);
+          sleeves(sleeveLen, off + 0.004, mat(f, 1.5, sleeveLen * 4));
+          if (it.n === 32) collar(1.45, off, mat(f, 6, 0.4));
+        }
+        break;
+      }
+      case 'skirts': {
+        const off = 0.008, hem = SKIRT_HEM[it.n] || 0.5;
+        put(torsoTube(hem, 1.03, off, aLine(off, it.n === 20 ? 0.6 : 0.2)), mat(f, 4, 2), form, oval);
+        break;
+      }
+      case 'pants':
+      case 'shorts': {
+        const off = 0.009, hem = it.cat === 'shorts' ? 0.6 : PANTS_HEM[it.n] || 0.075;
+        put(torsoTube(0.8, 1.0, off), mat(f, 4, 0.8), form, oval);
+        const widen = it.n === 71 ? 0.05 : it.cat === 'shorts' ? 0.02 : 0.006;
+        for (const side of [-1, 1]) {
+          put(legTube(hem, 0.87, 0.012, widen), mat(f, 1.5, (0.87 - hem) * 3), form, (s) => { s.position.x = side * LEG_X; s.scale.z = 0.92; });
+        }
+        break;
+      }
+      case 'bags': {
+        // Hangs from the left hand.
+        const m = mat(f, 1, 1), hand = arms[-1];
+        put(new THREE.BoxGeometry(0.2, 0.15, 0.07, 2, 2, 2), m, hand, (s) => { s.position.set(0, -0.82, 0.01); s.rotation.z = ARM_ANGLE; });
+        put(new THREE.TorusGeometry(0.075, 0.008, 8, 32, Math.PI), mat(f, 3, 0.3, true), hand, (s) => { s.position.set(0, -0.745, 0.01); s.rotation.z = ARM_ANGLE; });
+        break;
+      }
+      case 'accessories': {
+        // A scarf: knotted at the neck with two tails.
+        const m = mat(f, 3, 0.6);
+        put(new THREE.TorusGeometry(0.07, 0.024, 12, 40), m, form, (s) => { s.position.y = 1.47; s.rotation.x = Math.PI / 2 - 0.15; s.scale.y = 0.85; });
+        for (const [dx, rz] of [[-0.03, 0.12], [0.035, -0.08]]) {
+          put(new THREE.BoxGeometry(0.06, 0.3, 0.012), mat(f, 1, 2), form, (s) => { s.position.set(dx, 1.31, 0.135); s.rotation.set(-0.12, 0, rz); });
+        }
+        break;
+      }
+      case 'hats': {
+        const m = mat(f, 3, 1);
+        put(new THREE.CylinderGeometry(0.17, 0.17, 0.01, 48), m, form, (s) => { s.position.y = 1.72; });
+        put(new THREE.CylinderGeometry(0.085, 0.1, 0.09, 40), m, form, (s) => { s.position.y = 1.765; });
+        break;
+      }
+      case 'shoes': {
+        const m = mat(f, 1, 1);
+        for (const side of [-1, 1]) {
+          put(new THREE.SphereGeometry(1, 20, 14), m, form, (s) => { s.position.set(side * LEG_X, 0.065, 0.04); s.scale.set(0.042, 0.032, 0.088); });
+        }
+        break;
+      }
+    }
+    return parts;
+  }
+
+  const wornParts = {};
+  const anims = [];
+  dress = {
+    put(slot, it, quiet) {
+      this.remove(slot);
+      const parts = build(it);
+      wornParts[slot] = parts;
+      if (!quiet && !reduceMotion) {
+        for (const p of parts) p.material.opacity = 0;
+        anims.push({ parts, t0: performance.now() });
+      }
+      needsRender = true;
+    },
+    remove(slot) {
+      const parts = wornParts[slot];
+      if (!parts) return;
+      for (const p of parts) {
+        p.parent.remove(p);
+        p.geometry.dispose();
+        for (const e of fabricCache.values()) e.users.delete(p.material);
+        if (p.material.userData.tex) p.material.userData.tex.dispose();
+        p.material.dispose();
+      }
+      delete wornParts[slot];
+      needsRender = true;
+    },
+  };
+
+  // Size the canvas to the stage, and back the camera off until the whole form fits.
+  const FIT_H = 2.0, FIT_W = 1.1;
+  function resize() {
+    const w = stage.clientWidth, h = stage.clientHeight;
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+    const t = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+    const dist = Math.max(FIT_H / 2 / t, FIT_W / 2 / (t * camera.aspect)) + 0.3;
+    const dir = camera.position.clone().sub(controls.target);
+    if (dir.lengthSq() < 1e-6) dir.set(0.35, 0.12, 1);
+    camera.position.copy(controls.target).add(dir.setLength(dist));
+    controls.maxDistance = Math.max(7, dist * 1.4);
+    needsRender = true;
+  }
+  new ResizeObserver(resize).observe(stage);
+  resize();
+
+  function tick(now) {
+    const moved = controls.update();
+    for (let i = anims.length - 1; i >= 0; i--) {
+      const a = anims[i], k = Math.min(1, (now - a.t0) / 380);
+      const e = 1 - Math.pow(1 - k, 3);
+      for (const p of a.parts) {
+        p.material.opacity = e;
+        p.userData.s ??= p.scale.clone();
+        p.scale.copy(p.userData.s).multiplyScalar(1.08 - 0.08 * e);
+      }
+      if (k === 1) {
+        for (const p of a.parts) p.material.opacity = 1;
+        anims.splice(i, 1);
+      }
+    }
+    if (moved || anims.length || needsRender || controls.autoRotate) {
+      renderer.render(scene, camera);
+      needsRender = false;
+    }
+  }
+  renderer.setAnimationLoop(tick);
+  requestAnimationFrame(() => $('loading').classList.add('done'));
+  setTimeout(() => { $('hint').style.opacity = 0; }, 7000);
+
+  // Put on anything chosen before the scene was ready.
+  for (const s of SLOT_ORDER) if (worn[s]) dress.put(s, worn[s], true);
+
+  window.__outfit = { worn: () => Object.fromEntries(Object.entries(worn).map(([s, it]) => [s, it.n])), wear: (n) => wear(items.find((it) => it.n === n)), render: () => renderer.render(scene, camera) };
+  return dress;
+}
+
+/* ---------- Start ---------- */
+renderTabs();
+renderGrid();
+const m = location.hash.match(/look=([\d,]+)/);
+if (m) for (const n of m[1].split(',').map(Number)) { const it = items.find((i) => i.n === n); if (it) wear(it, true); }
+startScene();
+</script>
+</body>
+</html>

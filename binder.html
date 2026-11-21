@@ -68,6 +68,8 @@
     text-decoration: none;
   }
   #top span { font-size: 15px; font-style: italic; color: var(--dim); }
+  #top a.outfit-link { font-family: inherit; font-size: 15px; color: var(--ink); text-decoration: underline; text-underline-offset: 3px; text-decoration-color: rgba(243, 236, 224, .4); white-space: nowrap; }
+  @media (max-width: 560px) { #top a.outfit-link { display: none; } }
   #filter {
     align-self: center;
     max-width: 46vw;
@@ -149,6 +151,18 @@
   #card-info dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 16px; margin: 12px 0 0; font-size: 17px; }
   #card-info dt { color: var(--dim); font-style: italic; }
   #card-info dd { margin: 0; text-align: right; }
+  #card-info .try {
+    display: block;
+    margin-top: 8px;
+    padding: 9px 12px;
+    border: 1px solid var(--accent);
+    border-radius: 8px;
+    color: #f1d9a4;
+    font-size: 17px;
+    text-align: center;
+    text-decoration: none;
+  }
+  #card-info .try:hover { background: rgba(216, 176, 106, .14); }
   #card-info .shop {
     display: block;
     margin-top: 16px;
@@ -250,6 +264,7 @@
 <header id="top" class="glass">
   <a href="./">mikinoarchive</a>
   <span>card binder</span>
+  <a class="outfit-link" href="outfit.html">outfit maker</a>
   <select id="filter" aria-label="Show a type of clothing"></select>
 </header>
 
@@ -1175,6 +1190,7 @@ function showInfo(i) {
     (it.price ? `<div class="price">${esc(it.price)}</div>` : '') +
     (rows.length ? `<dl>${rows.map((r) => `<dt>${r[0]}</dt><dd>${esc(r[1])}</dd>`).join('')}</dl>` : '') +
     `<a class="shop" href="${esc(it.url || SHOP_URL)}" target="_blank" rel="noopener">${it.url ? 'View on Depop' : 'Shop mikinoarchive on Depop'}</a>` +
+    (it.cat ? `<a class="try" href="outfit.html#look=${it.n}">Try it on the dress form</a>` : '') +
     `<p class="hint">Tap the card to turn it over.</p>` +
     `<div class="card-nav"><button type="button" data-step="-1">&lsaquo; Previous</button><button type="button" data-step="1">Next &rsaquo;</button></div>`;
   box.hidden = false;
