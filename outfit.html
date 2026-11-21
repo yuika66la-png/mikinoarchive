@@ -555,13 +555,14 @@ function startScene() {
   // Model proportions: long legs (crotch at half height), slim waist, small head.
   const CROTCH = 0.9, HIP = 1.0;
   const torsoPts = smooth([[0, .885], [.07, .89], [.12, .91], [.148, .95], [.156, .995], [.15, 1.04], [.122, 1.11], [.099, 1.165],
-    [.104, 1.22], [.116, 1.26], [.126, 1.31], [.124, 1.36], [.13, 1.41], [.124, 1.45], [.088, 1.49], [.046, 1.515], [.04, 1.56], [.039, 1.605]], 160);
+    [.104, 1.22], [.116, 1.26], [.125, 1.31], [.124, 1.355], [.12, 1.4], [.112, 1.44], [.09, 1.475], [.052, 1.505], [.041, 1.54], [.039, 1.605]], 160);
   // Curves the lathe can't make: the bust pushes forward and the seat pushes back.
   // Clothes get the same shape, but bridged between the two sides so tops don't dip in at the centre.
   // Broad, soft shapes: wide falloff and a gentle fade toward the sides keep them smooth, not pointed.
   // The bust rises in a long, gentle slope from the upper chest and rounds off quickly underneath.
   const BUST = { y: 1.285, sy: 0.05, syUp: 0.09, x: 0.05, sx: 0.07, a: 0.04 };
-  const CHEST = { y: 1.405, sy: 0.045, x: 0, sx: 0.11, a: -0.012 };   // keeps the upper chest flat
+  const CHEST = { y: 1.405, sy: 0.045, x: 0, sx: 0.11, a: -0.006 };   // keeps the upper chest flat
+  const LUMBAR = { y: 1.13, sy: 0.075, x: 0, sx: 0.1, a: -0.008 };    // the small of the back
   const SEAT = { y: 0.96, sy: 0.09, x: 0.055, sx: 0.085, a: 0.012 };
   const BELLY = { y: 1.02, sy: 0.11, x: 0, sx: 0.12, a: -0.042 };   // flattens the tummy
   const bump = (b, x, y, bridged) => {
@@ -577,8 +578,8 @@ function startScene() {
       const r = Math.hypot(x, z);
       if (r < 1e-5) continue;
       const nz = z / r;
-      const d = nz > 0 ? (bump(BUST, x, y, bridged) + bump(CHEST, x, y, false) + bump(BELLY, x, y, false)) * ease(nz) : bump(SEAT, x, y, bridged) * ease(-nz);
-      pos.setZ(i, z + Math.sign(z) * d / ZS);   // the mesh is squashed in depth, so push further in geometry space
+      const d = nz > 0 ? (bump(BUST, x, y, bridged) + bump(CHEST, x, y, false) + bump(BELLY, x, y, false)) * ease(nz) : (bump(SEAT, x, y, bridged) + bump(LUMBAR, x, y, false)) * ease(-nz);
+      pos.setZ(i, z + Math.sign(z) * d);
     }
     geo.computeVertexNormals();
     return geo;
@@ -589,7 +590,71 @@ function startScene() {
   const legPts = smooth([[0, .05], [.024, .058], [.024, .1], [.033, .19], [.049, .3], [.044, .38], [.037, .46], [.04, .51],
     [.049, .58], [.062, .7], [.072, .82], [.077, .9], [.077, .965]], 140);
   const legR = lookup(legPts);
-  const ARM_ANGLE = 0.12, SHOULDER = new THREE.Vector3(0.163, 1.448, 0);
+  /* One continuous surface for the torso, shoulders and tops of the thighs.
+     At each height the cross-section is the torso (an oval, widened at the shoulders) blended smoothly
+     into the two thighs, so there is no seam where legs meet hips and the arms sit on real shoulders. */
+  const SH = (y) => 0.05 * Math.exp(-(((y - 1.425) / 0.045) ** 2));
+  const ellipseR = (sx, cz, rx, rz) => (rx > 0 && rz > 0 ? 1 / Math.sqrt((sx / rx) ** 2 + (cz / rz) ** 2) : 0);
+  function legRay(sx, cz, y, side) {
+    if (y > 1.02) return 0;
+    const t = Math.min(1, Math.max(0, (y - 0.9) / 0.12));
+    const R = legR(y) * (1 - 0.5 * ease(t));          // thighs fade inside the hips
+    const cx = side * (LEG_X - (LEG_TOP - y) * Math.sin(LEG_TILT)), Rz = R * 0.92;
+    const a = (sx / R) ** 2 + (cz / Rz) ** 2, b = -2 * sx * cx / (R * R), c = (cx / R) ** 2 - 1;
+    const disc = b * b - 4 * a * c;
+    return disc < 0 ? 0 : Math.max(0, (-b + Math.sqrt(disc)) / (2 * a));
+  }
+  const K = 110;
+  const smax = (a, b) => { const m = Math.max(a, b); return m + Math.log(Math.exp(K * (a - m)) + Math.exp(K * (b - m))) / K; };
+  function bodyR(phi, y) {
+    const sx = Math.sin(phi), cz = Math.cos(phi), t = torsoR(y);
+    const torso = y > CROTCH ? ellipseR(sx, cz, t + SH(y), t * ZS) : 0;
+    if (y > 1.03) return torso;
+    return smax(torso, Math.max(legRay(sx, cz, y, 1), legRay(sx, cz, y, -1)));
+  }
+  // A surface swept around the body: rFn(angle, height) gives the distance from the centre line.
+  // A gap opens it at the front (open jackets); otherwise its seam is hidden at the back.
+  function loft(y0, y1, rFn, gap = 0, S = 84) {
+    const rows = Math.max(8, Math.round((y1 - y0) * 160));
+    const p0 = gap ? gap / 2 : Math.PI, pl = Math.PI * 2 - gap;
+    const pos = new Float32Array((rows + 1) * (S + 1) * 3), uv = new Float32Array((rows + 1) * (S + 1) * 2), idx = [];
+    for (let i = 0, k = 0; i <= rows; i++) {
+      const y = y0 + (y1 - y0) * i / rows;
+      for (let j = 0; j <= S; j++, k++) {
+        const phi = p0 + pl * j / S, r = rFn(phi, y);
+        pos.set([r * Math.sin(phi), y, r * Math.cos(phi)], k * 3);
+        uv.set([j / S, i / rows], k * 2);
+      }
+    }
+    for (let i = 0; i < rows; i++) {
+      for (let j = 0; j < S; j++) {
+        const a = i * (S + 1) + j, b = a + S + 1;
+        idx.push(a, a + 1, b, a + 1, b + 1, b);
+      }
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+    geo.setIndex(idx);
+    geo.userData.closed = !gap;
+    geo.userData.S = S;
+    return geo;
+  }
+  // Normals, with the back seam of a closed surface averaged so it doesn't show.
+  function finish(geo) {
+    geo.computeVertexNormals();
+    if (geo.userData.closed) {
+      const n = geo.attributes.normal, S = geo.userData.S;
+      for (let a = 0; a < n.count; a += S + 1) {
+        const b = a + S, x = n.getX(a) + n.getX(b), y = n.getY(a) + n.getY(b), z = n.getZ(a) + n.getZ(b), l = Math.hypot(x, y, z) || 1;
+        n.setXYZ(a, x / l, y / l, z / l);
+        n.setXYZ(b, x / l, y / l, z / l);
+      }
+    }
+    return geo;
+  }
+
+  const ARM_ANGLE = 0.12, SHOULDER = new THREE.Vector3(0.155, 1.43, 0);
   // Arm profile along its own downward axis (y = minus the distance from the shoulder).
   const armPts = smooth([[0, -.68], [.019, -.665], [.025, -.64], [.019, -.6], [.029, -.46], [.025, -.33], [.034, -.2],
     [.039, -.07], [.037, 0], [0, .03]], 120);
@@ -605,8 +670,7 @@ function startScene() {
     parent.add(m);
     return m;
   };
-  const torso = add(curve(new THREE.LatheGeometry(torsoPts, 72)), bodyMat);
-  torso.scale.z = ZS;
+  add(finish(curve(loft(0.8, 1.605, bodyR, 0, 112))), bodyMat);
   const head = add(new THREE.SphereGeometry(0.095, 40, 28), bodyMat);
   head.position.y = 1.69;
   head.scale.set(0.86, 1.2, 0.98);
@@ -615,7 +679,7 @@ function startScene() {
     // Each leg hangs from the hip and leans in a little, so the feet sit close together.
     const g = new THREE.Group();
     g.position.set(side * LEG_X, LEG_TOP, 0);
-    g.rotation.z = side * LEG_TILT;
+    g.rotation.z = -side * LEG_TILT;
     form.add(g);
     const leg = add(new THREE.LatheGeometry(legPts, 32), bodyMat, g);
     leg.position.y = -LEG_TOP;
@@ -690,16 +754,12 @@ function startScene() {
 
   // A tube around the torso from y0 up to y1. `flare` widens it below the hips (skirts, dresses).
   function torsoTube(y0, y1, off, flare, gap) {
-    const pts = [];
-    const n = Math.max(12, Math.round((y1 - y0) * 90));
-    for (let i = 0; i <= n; i++) {
-      const y = y0 + (y1 - y0) * i / n;
-      let r = (y > CROTCH ? torsoR(y) : 0) + off;
-      if (flare) r = Math.max(r, flare(y));
-      pts.push(new THREE.Vector2(r, y));
-    }
-    const geo = gap ? new THREE.LatheGeometry(pts, 72, gap / 2, Math.PI * 2 - gap) : new THREE.LatheGeometry(pts, 72);
-    return curve(geo, true);
+    return finish(curve(loft(y0, y1, (phi, y) => {
+      let r = bodyR(phi, y) + off;
+      const f = flare ? flare(y) : 0;
+      if (f > 0) r = Math.max(r, ellipseR(Math.sin(phi), Math.cos(phi), f, f * ZS));
+      return r;
+    }, gap || 0), true));
   }
   const aLine = (off, k, from = HIP) => (y) => (y < from ? torsoR(from) + off + (from - y) * k : 0);
   function legTube(y0, y1, off, widen = 0) {
@@ -733,7 +793,7 @@ function startScene() {
       parts.push(mesh);
       return mesh;
     };
-    const oval = (mesh) => { mesh.scale.z = ZS; };
+    const oval = () => {};   // the clothes surface is already oval
     const sleeves = (len, off, m) => {
       if (len <= 0) return;
       for (const side of [-1, 1]) {
@@ -804,7 +864,7 @@ function startScene() {
       case 'pants':
       case 'shorts': {
         const off = 0.009, hem = it.cat === 'shorts' ? 0.68 : PANTS_HEM[it.n] || 0.075;
-        put(torsoTube(CROTCH, 1.12, off), mat(f, 4, 0.8), form, oval);
+        put(torsoTube(0.8, 1.12, off), mat(f, 4, 0.8), form, oval);
         const widen = it.n === 71 ? 0.05 : it.cat === 'shorts' ? 0.02 : 0.006;
         for (const side of [-1, 1]) {
           put(legTube(hem, 0.965, 0.012, widen), mat(f, 1.5, (0.965 - hem) * 3), legs[side], (s) => { s.position.y = -LEG_TOP; s.scale.z = 0.92; });
