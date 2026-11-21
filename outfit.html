@@ -624,13 +624,17 @@ function startScene() {
     const d = (SHOULDER.y - y) / Math.cos(ARM_ANGLE);
     const cx = side * (SHOULDER.x + d * Math.sin(ARM_ANGLE));
     const cap = Math.sqrt(Math.max(0, 0.042 ** 2 - (y - SHOULDER.y) ** 2));
-    const R = Math.max(armR(-d), cap) * (0.7 + 0.3 * ramp(y, ARM_CUT, 1.38));   // tucks inside the arm below the armpit
+    const R = Math.max(armR(-d), cap) * (0.5 + 0.5 * ramp(y, ARM_CUT, 1.41));   // tucks inside the arm below the armpit
     return rayHit(sx, cz, cx, 0, R, R);
   }
   // Smooth maximum that only rounds where the two are within BLEND of each other, and is exact elsewhere,
   // so the thighs below the hips stay exactly the legs' shape (no lip at the bottom edge).
   const BLEND = 0.04;
-  const smax = (a, b) => { const h = Math.max(BLEND - Math.abs(a - b), 0) / BLEND; return Math.max(a, b) + h * h * BLEND / 4; };
+  const smax = (a, b, k = BLEND) => {
+    if (k <= 1e-6) return Math.max(a, b);
+    const h = Math.max(k - Math.abs(a - b), 0) / k;
+    return Math.max(a, b) + h * h * k / 4;
+  };
   function bodyR(phi, y, withArms = true) {
     const sx = Math.sin(phi), cz = Math.cos(phi), t = torsoR(y);
     let r = y > CROTCH ? rayOut(sx, cz, 0, headFwd(y), t + SH(y), t * depthAt(y)) : 0;
@@ -638,7 +642,12 @@ function startScene() {
     if (withArms && y >= ARM_CUT) {
       for (const side of [-1, 1]) {
         const h = armHit(sx, cz, y, side);
-        if (h && h.near < r + BLEND) r = smax(r, h.far);   // only where the arm touches the body along this ray
+        if (!h) continue;
+        // Fade the arm in smoothly: fully where it touches the body along this ray, not at all once there's a
+        // clear gap, and the armpit fillet grows from nothing at ARM_CUT so there's no step anywhere.
+        const g = ramp(y, ARM_CUT, 1.41), gapW = 0.03 * g;
+        const w = h.near <= r ? 1 : gapW > 0 ? Math.max(0, 1 - (h.near - r) / gapW) : 0;
+        if (w > 0) r = r + (smax(r, h.far, BLEND * g) - r) * ease(w);
       }
     }
     return r;
@@ -696,7 +705,7 @@ function startScene() {
 
   const ARM_ANGLE = 0.12, SHOULDER = new THREE.Vector3(0.155, 1.43, 0);
   // Arm profile along its own downward axis (y = minus the distance from the shoulder).
-  const armPts = smooth([[0, -.68], [.019, -.665], [.025, -.64], [.019, -.6], [.029, -.46], [.025, -.33], [.034, -.2],
+  const armPts = smooth([[0, -.645], [.015, -.64], [.0185, -.615], [.019, -.6], [.029, -.46], [.025, -.33], [.034, -.2],
     [.039, -.07], [.037, 0], [0, .03]], 120);
   const armR = lookup(armPts);
 
@@ -731,6 +740,22 @@ function startScene() {
     add(new THREE.LatheGeometry(armPts, 28), bodyMat, g);
     const cap = add(new THREE.SphereGeometry(0.042, 24, 16), bodyMat, g);
     cap.scale.set(1, 1, .9);
+    // Hand: a flat palm facing the thigh, four fingers of different lengths curling in a little, and a thumb in front.
+    const palm = add(new THREE.CapsuleGeometry(0.021, 0.045, 6, 18), bodyMat, g);
+    palm.position.y = -0.64;
+    palm.scale.set(0.46, 1, 1.05);
+    [[0.0145, 0.03], [0.005, 0.037], [-0.0045, 0.034], [-0.0135, 0.027]].forEach(([z, len]) => {
+      const fr = 0.0068;
+      const finger = add(new THREE.CapsuleGeometry(fr, len, 4, 10), bodyMat, g);
+      finger.geometry.translate(0, -(len / 2 + fr), 0);     // pivot at the knuckle
+      finger.position.set(0, -0.662, z);
+      finger.rotation.z = -side * 0.16;
+      finger.scale.x = 0.9;
+    });
+    const thumb = add(new THREE.CapsuleGeometry(0.0085, 0.026, 4, 10), bodyMat, g);
+    thumb.geometry.translate(0, -0.021, 0);
+    thumb.position.set(-side * 0.003, -0.618, 0.017);
+    thumb.rotation.set(-0.55, 0, -side * 0.22);
     arms[side] = g;
   }
   const base = add(new THREE.CylinderGeometry(0.3, 0.32, 0.035, 64), woodMat);
@@ -907,8 +932,8 @@ function startScene() {
       case 'bags': {
         // Hangs from the left hand.
         const m = mat(f, 1, 1), hand = arms[-1];
-        put(new THREE.BoxGeometry(0.2, 0.15, 0.07, 2, 2, 2), m, hand, (s) => { s.position.set(0, -0.88, 0.01); s.rotation.z = ARM_ANGLE; });
-        put(new THREE.TorusGeometry(0.075, 0.008, 8, 32, Math.PI), mat(f, 3, 0.3, true), hand, (s) => { s.position.set(0, -0.805, 0.01); s.rotation.z = ARM_ANGLE; });
+        put(new THREE.BoxGeometry(0.2, 0.15, 0.07, 2, 2, 2), m, hand, (s) => { s.position.set(0, -0.865, 0.01); s.rotation.z = ARM_ANGLE; });
+        put(new THREE.TorusGeometry(0.075, 0.008, 8, 32, Math.PI), mat(f, 3, 0.3, true), hand, (s) => { s.position.set(0, -0.79, 0.01); s.rotation.z = ARM_ANGLE; });
         break;
       }
       case 'accessories': {
