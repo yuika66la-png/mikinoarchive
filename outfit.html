@@ -185,7 +185,7 @@
     flex: 1;
     overflow-y: auto;
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     align-content: start;
     gap: 10px;
     padding: 12px 16px calc(16px + env(safe-area-inset-bottom));
@@ -193,6 +193,7 @@
   }
   .card {
     position: relative;
+    min-width: 0;
     display: flex;
     flex-direction: column;
     padding: 5px 5px 4px;
@@ -250,13 +251,13 @@
     .look-actions { margin-top: 8px; }
     .look-actions button { padding: 5px 6px; font-size: 14px; }
     .tabs { padding: 8px 12px; }
-    .grid { grid-template-columns: repeat(4, 1fr); gap: 8px; padding: 10px 12px calc(14px + env(safe-area-inset-bottom)); }
+    .grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; padding: 10px 12px calc(14px + env(safe-area-inset-bottom)); }
     .card .foot { font-size: 12px; }
     .card .name { display: none; }
     #hint { bottom: 10px; font-size: 14px; }
     #top span { display: none; }
   }
-  @media (max-width: 380px) { .grid { grid-template-columns: repeat(3, 1fr); } }
+  @media (max-width: 380px) { .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 
   .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 </style>
@@ -880,10 +881,10 @@ function startScene() {
 }
 
 /* ---------- Start ---------- */
+const m = location.hash.match(/look=([\d,]+)/);
+if (m) for (const n of m[1].split(',').map(Number)) { const it = items.find((i) => i.n === n); if (it && SLOT[it.cat]) worn[SLOT[it.cat]] = it; }
 renderTabs();
 renderGrid();
-const m = location.hash.match(/look=([\d,]+)/);
-if (m) for (const n of m[1].split(',').map(Number)) { const it = items.find((i) => i.n === n); if (it) wear(it, true); }
 startScene();
 </script>
 </body>
