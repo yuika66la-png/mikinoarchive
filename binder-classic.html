@@ -69,7 +69,8 @@
     display: flex;
     align-items: baseline;
     justify-content: center;
-    gap: 12px;
+    flex-wrap: wrap;
+    gap: 6px 12px;
     margin-bottom: 12px;
   }
   .brand {
@@ -80,6 +81,21 @@
     text-decoration: none;
   }
   .kicker { font-size: 14px; font-style: italic; color: var(--muted); }
+  #filter {
+    align-self: center;
+    max-width: 52vw;
+    padding: 4px 24px 5px 10px;
+    border: 1px solid currentColor;
+    border-radius: 999px;
+    background: transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23888' stroke-width='1.5'/%3E%3C/svg%3E") no-repeat right 9px center;
+    color: var(--ink);
+    font: 15px 'EB Garamond', serif;
+    text-overflow: ellipsis;
+    -webkit-appearance: none;
+    appearance: none;
+    cursor: pointer;
+  }
+  #filter.on { color: var(--red); }
 
   /* Binder */
   .binder {
@@ -431,6 +447,7 @@
 <header class="top">
   <a class="brand" href="./">mikinoarchive</a>
   <span class="kicker">card binder</span>
+  <select id="filter" aria-label="Show a type of clothing"></select>
 </header>
 
 <noscript>The binder needs JavaScript to turn its pages.</noscript>
@@ -471,9 +488,34 @@
 </dialog>
 
 <script src="binder/items.js"></script>
+<script src="binder/categories.js"></script>
 <script>
 (function () {
-  var items = window.BINDER_ITEMS || [];
+  var allItems = window.BINDER_ITEMS || [];
+  var cats = (window.BINDER_CATS || []).filter(function (c) {
+    return allItems.some(function (it) { return it.cat === c[0]; });
+  });
+  var wanted = new URLSearchParams(location.search).get('type');
+  var activeCat = cats.some(function (c) { return c[0] === wanted; }) ? wanted : null;
+  var items = activeCat ? allItems.filter(function (it) { return it.cat === activeCat; }) : allItems;
+
+  /* Type filter: picking one reloads with only those pieces */
+  (function () {
+    var sel = document.getElementById('filter');
+    sel.add(new Option('All pieces (' + allItems.length + ')', ''));
+    cats.forEach(function (c) {
+      var count = allItems.filter(function (it) { return it.cat === c[0]; }).length;
+      sel.add(new Option(c[1] + ' (' + count + ')', c[0]));
+    });
+    sel.value = activeCat || '';
+    if (activeCat) sel.classList.add('on');
+    sel.addEventListener('change', function () {
+      var url = new URL(location.href);
+      if (sel.value) url.searchParams.set('type', sel.value); else url.searchParams.delete('type');
+      url.hash = sel.value ? 'open' : '';
+      location.href = url.href;
+    });
+  })();
   var SHOP_URL = 'https://depop.com/mikinoarchivejp';
   var $ = function (id) { return document.getElementById(id); };
   var binder = $('binder'), left = $('pageLeft'), right = $('pageRight');
@@ -722,15 +764,15 @@
   /* Start: binder.html#open skips the cover, binder.html#23 opens card 23 */
   $('coverCount').textContent = items.length + ' cards';
   var hash = location.hash.slice(1);
-  var linked = /^\d+$/.test(hash) ? Number(hash) : 0;
-  if (linked >= 1 && linked <= items.length) {
-    view = viewOfCard(linked - 1);
+  var linked = /^\d+$/.test(hash) ? items.findIndex(function (it) { return it.n === Number(hash); }) : -1;
+  if (linked >= 0) {
+    view = viewOfCard(linked);
     $('cover').hidden = true;
     binder.classList.add('open');
     render();
-    openViewer(linked - 1);
+    openViewer(linked);
   } else {
-    if (hash === 'open') { $('cover').hidden = true; binder.classList.add('open'); }
+    if (hash === 'open' || activeCat) { $('cover').hidden = true; binder.classList.add('open'); }
     render();
   }
 })();

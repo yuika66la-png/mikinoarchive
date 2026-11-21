@@ -68,6 +68,25 @@
     text-decoration: none;
   }
   #top span { font-size: 15px; font-style: italic; color: var(--dim); }
+  #filter {
+    align-self: center;
+    max-width: 46vw;
+    margin-left: 2px;
+    padding: 5px 26px 6px 12px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, .08) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23f3ece0' stroke-width='1.5'/%3E%3C/svg%3E") no-repeat right 10px center;
+    color: var(--ink);
+    font: 15px 'EB Garamond', Georgia, serif;
+    text-overflow: ellipsis;
+    -webkit-appearance: none;
+    appearance: none;
+    cursor: pointer;
+  }
+  #filter:hover { background-color: rgba(255, 255, 255, .14); }
+  #filter.on { border-color: var(--accent); color: #f1d9a4; }
+  #filter option { color: #1a130e; background: #f3ece0; }
+  @media (max-width: 440px) { #top span { display: none; } }
 
   #pager {
     position: fixed;
@@ -231,6 +250,7 @@
 <header id="top" class="glass">
   <a href="./">mikinoarchive</a>
   <span>card binder</span>
+  <select id="filter" aria-label="Show a type of clothing"></select>
 </header>
 
 <nav id="pager" class="glass" aria-label="Binder pages">
@@ -256,18 +276,40 @@
 <noscript><p style="padding:24px;text-align:center"><a href="binder-classic.html" style="color:#d8b06a">Open the classic binder</a></p></noscript>
 
 <script src="binder/items.js"></script>
+<script src="binder/categories.js"></script>
 <script type="module">
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
-const items = window.BINDER_ITEMS || [];
+const ALL_ITEMS = window.BINDER_ITEMS || [];
+const CATS = (window.BINDER_CATS || []).filter(([id]) => ALL_ITEMS.some((it) => it.cat === id));   // only types in stock
+const catLabel = (id) => (CATS.find((c) => c[0] === id) || [])[1];
+const filterId = new URLSearchParams(location.search).get('type');
+const activeCat = catLabel(filterId) ? filterId : null;
+const items = activeCat ? ALL_ITEMS.filter((it) => it.cat === activeCat) : ALL_ITEMS;
 const SHOP_URL = 'https://depop.com/mikinoarchivejp';
 const $ = (id) => document.getElementById(id);
 const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const pad = (n) => String(n).padStart(3, '0');
 const ver = (it) => (it.v ? '?v=' + it.v : '');   // changes when a photo is replaced, so phones fetch the new one
 const title = (it) => it.name || it.brand || (it.origin ? 'Made in ' + it.origin : '') || (it.type ? it.type[0].toUpperCase() + it.type.slice(1) : '') || 'Archive piece';
+
+// Type filter: picking one reloads the binder with only those pieces (and the choice stays in the link).
+(() => {
+  const sel = $('filter');
+  const opt = (value, text) => sel.add(new Option(text, value));
+  opt('', `All pieces (${ALL_ITEMS.length})`);
+  for (const [id, label] of CATS) opt(id, `${label} (${ALL_ITEMS.filter((it) => it.cat === id).length})`);
+  sel.value = activeCat || '';
+  sel.classList.toggle('on', !!activeCat);
+  sel.addEventListener('change', () => {
+    const url = new URL(location.href);
+    if (sel.value) url.searchParams.set('type', sel.value); else url.searchParams.delete('type');
+    url.hash = sel.value ? 'open' : '';
+    location.href = url.href;
+  });
+})();
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 const easeInOut = (t) => (t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 const easeOut = (t) => 1 - Math.pow(1 - t, 3);
@@ -1517,7 +1559,7 @@ async function start() {
   if (linked >= 0) {
     setView(viewOfPage(pageOfCard(linked)));
     setTimeout(() => openInspect(linked), reduceMotion ? 0 : 1200);
-  } else if (hash === 'open') {
+  } else if (hash === 'open' || activeCat) {
     setView(1);
   } else {
     setView(0);

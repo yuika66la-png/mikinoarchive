@@ -157,6 +157,7 @@
       <label class="field"><span>ブランド</span><input id="f-brand" placeholder="Coach"></label>
     </div>
     <label class="field"><span>商品名（なくてもOK）</span><input id="f-name" placeholder="Y2K logo shoulder bag"></label>
+    <label class="field"><span>カテゴリー（絞り込み用）</span><select id="f-cat"><option value="">— 選んでください —</option></select></label>
     <div class="row2">
       <label class="field"><span>種類</span><input id="f-type" placeholder="top / bag / jeans"></label>
       <label class="field"><span>サイズ</span><input id="f-size" placeholder="M"></label>
@@ -177,14 +178,16 @@
   </form>
 </dialog>
 
+<script src="binder/categories.js"></script>
 <script>
 const OWNER = 'yuika66la-png';
-const REPO = 'mikinoarchive.github.io';
+const REPO = 'mikinoarchive';
 const BRANCH = 'main';
 const ITEMS_PATH = 'binder/items.js';
 const CARD = { w: 570, h: 760, q: 0.86 };    // big photo shown when a card is opened
 const THUMB = { w: 300, h: 400, q: 0.8 };    // small photo on the binder pages
-const TEXT_FIELDS = ['price', 'brand', 'name', 'type', 'size', 'color', 'cond', 'origin'];
+for (const [id, en, ja] of window.BINDER_CATS || []) document.getElementById('f-cat').add(new Option(`${ja} · ${en}`, id));
+const TEXT_FIELDS = ['cat', 'price', 'brand', 'name', 'type', 'size', 'color', 'cond', 'origin'];
 const KEY = 'mikino-binder-token';
 
 const $ = (id) => document.getElementById(id);
@@ -518,7 +521,7 @@ $('login-btn').addEventListener('click', async () => {
       : e.status === 401
         ? 'この鍵は使えませんでした。コピーしたものをもう一度貼り付けてみてください。'
         : e.status === 404
-          ? 'この鍵ではバインダーのリポジトリが見えません。作るときに mikinoarchive.github.io を選んだか確認してください。'
+          ? 'この鍵ではバインダーのリポジトリが見えません。作るときに mikinoarchive を選んだか確認してください。'
           : `確認できませんでした（${e.status || '通信エラー'}）。電波を確認してもう一度押してください。`;
   }
 });
