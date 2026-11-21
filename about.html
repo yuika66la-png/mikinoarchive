@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>About — Mikino Archive</title>
+<meta name="description" content="About the person behind mikinoarchive: 80s to Y2K vintage and secondhand, curated in Dallas.">
+<link rel="icon" href="media/mikino-logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=Cormorant+Garamond:ital,wght@0,500;1,400;1,500&display=swap">
+<style>
+  /* ============================================================
+     EDIT HERE: your name, bio and photo live in the HTML below,
+     marked with "EDIT" comments. Put a cut-out photo (PNG with a
+     transparent background) at media/about/me.png and it shows up
+     automatically in place of the placeholder.
+     ============================================================ */
+  :root {
+    color-scheme: light;
+    --paper: #f4f0e9;
+    --ink: #151210;
+    --muted: #6d655d;
+    --red: #ac0606;
+    --line: rgba(21, 18, 16, .18);
+    --f-sans: "Archivo", "Helvetica Neue", Arial, sans-serif;
+    --f-serif: "Cormorant Garamond", "Didot", Georgia, serif;
+    --gutter: clamp(16px, 3vw, 40px);
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 400 15px/1.5 var(--f-sans); overflow-x: hidden; }
+  a { color: inherit; text-decoration: none; }
+  :focus-visible { outline: 2px solid var(--red); outline-offset: 3px; }
+  img { display: block; max-width: 100%; }
+  .fine { font: 600 10.5px/1.4 var(--f-sans); letter-spacing: .09em; text-transform: uppercase; }
+  .pad { padding-inline: var(--gutter); }
+  em, .serif { font-family: var(--f-serif); font-style: italic; font-weight: 400; letter-spacing: 0; }
+
+  /* subtle paper grain */
+  body::before {
+    content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 50; opacity: .07; mix-blend-mode: multiply;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  /* ---------- top bar ---------- */
+  .bar { position: relative; z-index: 6; display: flex; justify-content: space-between; align-items: center; gap: 16px; padding-block: 18px; }
+  .bar nav { display: flex; gap: clamp(12px, 2.2vw, 30px); flex-wrap: wrap; justify-content: flex-end; }
+  .bar a { position: relative; }
+  .bar a::after { content: ""; position: absolute; left: 0; right: 0; bottom: -3px; height: 1px; background: currentColor; transform: scaleX(0); transform-origin: right; transition: transform .35s ease; }
+  .bar a:hover::after, .bar a[aria-current]::after { transform: scaleX(1); transform-origin: left; }
+  .brand { display: inline-flex; align-items: center; gap: 8px; }
+  .brand img { width: 22px; height: 22px; object-fit: contain; }
+
+  /* ---------- hero ---------- */
+  .hero { position: relative; min-height: 100svh; display: grid; grid-template-rows: auto auto 1fr; overflow: hidden; }
+  .name {
+    margin: 0; font-family: var(--f-sans); font-weight: 800; font-stretch: 112%; text-transform: uppercase;
+    line-height: .8; letter-spacing: -.045em; white-space: nowrap; position: relative; z-index: 3;
+    font-size: 18vw; /* JS fits this to the width */
+  }
+  .name .ch { display: inline-block; transform: translateY(105%); transition: transform .9s cubic-bezier(.2,.8,.2,1), color .25s; cursor: default; }
+  .name .ch.alt { font-family: var(--f-serif); font-style: italic; font-weight: 500; font-stretch: normal; color: var(--red); letter-spacing: -.02em; }
+  .name .clip { display: inline-block; overflow: hidden; padding-bottom: .04em; vertical-align: top; }
+  .ready .name .ch { transform: none; }
+
+  .under { position: relative; z-index: 3; display: grid; grid-template-columns: minmax(0, 330px) 1fr; gap: 24px; margin-top: clamp(10px, 1.6vw, 22px); }
+  .socials { display: flex; gap: 14px; flex-wrap: wrap; font-weight: 600; font-size: clamp(14px, 1.2vw, 17px); font-stretch: 90%; }
+  .socials a { border-bottom: 1.5px solid currentColor; padding-bottom: 1px; transition: color .2s; }
+  .socials a:hover { color: var(--red); }
+  .bio { margin: 14px 0 0; font-size: clamp(13.5px, 1.05vw, 15px); line-height: 1.5; max-width: 36ch; }
+  .bio em { font-size: 1.18em; }
+
+  /* the stage that holds the cut-out photo + floating tags */
+  .stage { position: relative; z-index: 2; min-height: 54vh; }
+  .me {
+    position: absolute; left: 50%; bottom: 0; width: clamp(200px, 25vw, 360px); aspect-ratio: 3 / 5;
+    transform: translate(calc(-50% + var(--mx, 0px)), var(--my, 0px)); will-change: transform;
+  }
+  .me img { width: 100%; height: 100%; object-fit: contain; object-position: bottom; filter: drop-shadow(0 18px 30px rgba(0,0,0,.18)); }
+  .me .ph {
+    position: absolute; inset: 0; border-radius: 999px 999px 0 0; border: 1.5px dashed rgba(21,18,16,.35);
+    background: repeating-linear-gradient(-45deg, rgba(172,6,6,.05) 0 10px, transparent 10px 20px);
+    display: grid; place-items: center; text-align: center; color: var(--muted); padding: 24px;
+  }
+  .me .ph b { display: block; font: italic 400 clamp(26px, 2.6vw, 38px)/1 var(--f-serif); color: var(--ink); margin-bottom: 8px; }
+  .me.has-photo .ph { display: none; }
+
+  .tag {
+    position: absolute; z-index: 4; padding: 5px 9px 4px; background: var(--ink); color: var(--paper);
+    font: 700 11px/1 var(--f-sans); letter-spacing: .06em; text-transform: uppercase; white-space: nowrap;
+    transform: translate(var(--tx, 0px), var(--ty, 0px)) rotate(var(--rot, 0deg));
+    transition: background .2s, color .2s; animation: bob 5s ease-in-out infinite; animation-delay: var(--d, 0s);
+  }
+  .tag:hover { background: var(--red); }
+  .tag::before { content: "["; } .tag::after { content: "]"; }
+  @keyframes bob { 50% { translate: 0 -7px; } }
+
+  /* cursor trail of clothing cards */
+  .trail { position: absolute; inset: 0; z-index: 1; pointer-events: none; overflow: hidden; }
+  .trail img {
+    position: absolute; width: clamp(90px, 9vw, 140px); aspect-ratio: 3 / 4; object-fit: cover;
+    box-shadow: 0 8px 22px rgba(0,0,0,.18); border: 4px solid #fff;
+    translate: -50% -50%; animation: drop 1.4s cubic-bezier(.2,.8,.2,1) forwards;
+  }
+  @keyframes drop {
+    0% { opacity: 0; transform: scale(.4) rotate(var(--r)); }
+    18% { opacity: 1; transform: scale(1) rotate(var(--r)); }
+    70% { opacity: 1; }
+    100% { opacity: 0; transform: scale(.85) rotate(var(--r)) translateY(24px); }
+  }
+  .hint { position: absolute; z-index: 3; right: var(--gutter); bottom: 18px; color: var(--muted); }
+  .scrollcue { position: absolute; z-index: 3; left: var(--gutter); bottom: 18px; display: flex; align-items: center; gap: 10px; color: var(--muted); }
+  .scrollcue i { width: 1px; height: 34px; background: var(--muted); transform-origin: top; animation: cue 1.8s ease-in-out infinite; }
+  @keyframes cue { 0% { transform: scaleY(0); } 50% { transform: scaleY(1); transform-origin: top; } 51% { transform-origin: bottom; } 100% { transform: scaleY(0); transform-origin: bottom; } }
+
+  /* ---------- statement (words light up as you scroll) ---------- */
+  .statement { padding-block: clamp(90px, 16vw, 220px); }
+  .statement p {
+    margin: 0; max-width: 1300px; font: 500 clamp(28px, 4.6vw, 72px)/1.04 var(--f-sans); font-stretch: 100%;
+    text-transform: uppercase; letter-spacing: -.025em; text-align: justify; text-align-last: left;
+  }
+  .statement p em { text-transform: none; font-size: 1.12em; letter-spacing: -.01em; }
+  .statement p b { font-weight: 850; font-stretch: 120%; }
+  .statement .w { opacity: .14; transition: opacity .25s linear; }
+  .statement .w.on { opacity: 1; }
+  .statement .w.red { color: var(--red); }
+
+  /* ---------- marquee ---------- */
+  .band { background: var(--red); color: #fff; overflow: hidden; padding-block: clamp(10px, 1.4vw, 18px); transform: skewY(var(--skew, 0deg)); }
+  .band .track { display: flex; width: max-content; will-change: transform; }
+  .band span { font: 800 clamp(34px, 6vw, 92px)/1 var(--f-sans); font-stretch: 115%; text-transform: uppercase; letter-spacing: -.03em; padding-right: .5em; white-space: nowrap; }
+  .band span em { font-weight: 400; text-transform: none; padding-inline: .1em; }
+
+  /* ---------- facts ---------- */
+  .facts { padding-block: clamp(70px, 10vw, 140px); display: grid; grid-template-columns: repeat(12, 1fr); gap: clamp(16px, 2.4vw, 32px); }
+  .facts h2 { grid-column: 1 / -1; margin: 0 0 clamp(10px, 2vw, 30px); font: 800 clamp(48px, 9vw, 150px)/.85 var(--f-sans); font-stretch: 115%; text-transform: uppercase; letter-spacing: -.045em; }
+  .facts h2 em { font-weight: 400; text-transform: none; color: var(--red); letter-spacing: -.02em; }
+  .fact { grid-column: span 3; border-top: 1.5px solid var(--ink); padding-top: 12px; opacity: 0; transform: translateY(30px); transition: opacity .8s, transform .8s cubic-bezier(.2,.8,.2,1); }
+  .fact.in { opacity: 1; transform: none; }
+  .fact .v { margin-top: 26px; font: 500 clamp(26px, 2.8vw, 42px)/1.02 var(--f-serif); font-style: italic; }
+  .fact .v b { font: 800 .8em/1 var(--f-sans); font-style: normal; text-transform: uppercase; letter-spacing: -.02em; }
+
+  /* ---------- photo strip with parallax ---------- */
+  .strip { display: flex; gap: clamp(10px, 1.6vw, 22px); padding-block: 20px 0; overflow: hidden; }
+  .strip a { flex: 1 1 0; min-width: 0; aspect-ratio: 3 / 4; overflow: hidden; background: #ddd5ca; }
+  .strip img { width: 100%; height: 118%; object-fit: cover; transform: translateY(var(--py, 0px)); transition: filter .4s; }
+  .strip a:nth-child(even) { margin-top: clamp(30px, 6vw, 90px); }
+  .strip a:hover img { filter: saturate(1.2) contrast(1.05); }
+
+  /* ---------- outro ---------- */
+  .outro { padding-block: clamp(100px, 14vw, 200px) 30px; text-align: center; }
+  .outro .fine { color: var(--muted); }
+  .hi { display: inline-block; margin: 16px 0 10px; font: 800 clamp(70px, 17vw, 300px)/.8 var(--f-sans); font-stretch: 120%; letter-spacing: -.055em; text-transform: uppercase; transition: color .3s; }
+  .hi em { font-weight: 400; text-transform: none; letter-spacing: -.03em; }
+  .hi:hover { color: var(--red); }
+  .outro nav { display: flex; justify-content: center; gap: 22px; flex-wrap: wrap; margin-top: 26px; }
+  .outro nav a:hover { color: var(--red); }
+  footer { display: flex; justify-content: space-between; gap: 16px; padding-block: 22px; border-top: 1px solid var(--line); color: var(--muted); margin-top: 60px; }
+
+  @media (max-width: 480px) {
+    .bar nav a[href='binder.html'] { display: none; }
+    .bar nav { gap: 14px; }
+  }
+  @media (max-width: 760px) {
+    .under { grid-template-columns: 1fr; }
+    .stage { min-height: 62vh; }
+    .me { width: min(62vw, 300px); }
+    .fact { grid-column: span 6; }
+    .strip a:nth-child(n+4) { display: none; }
+    .hint { display: none; }
+    .tag { font-size: 10px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+    .name .ch { transform: none; }
+    .statement .w { opacity: 1; }
+    .fact { opacity: 1; transform: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ================= HERO ================= -->
+<header class="hero pad" id="top">
+  <div class="bar fine">
+    <a class="brand" href="index.html"><img src="media/mikino-logo.png" alt="">mikinoarchive</a>
+    <nav aria-label="Main">
+      <a href="about.html" aria-current="page">About</a>
+      <a href="lookbook.html">Lookbook</a>
+      <a href="portfolio.html">Portfolio</a>
+      <a href="binder.html">Binder</a>
+    </nav>
+  </div>
+
+  <!-- EDIT: your name. Each letter flips to italic red when you hover it. -->
+  <h1 class="name" id="name" aria-label="Hunter"><span class="clip">Hunter</span></h1>
+
+  <div class="under">
+    <div>
+      <div class="socials">
+        <a href="https://www.instagram.com/mikinoarchive/" target="_blank" rel="noopener">Instagram</a>
+        <a href="https://depop.com/mikinoarchivejp" target="_blank" rel="noopener">Depop</a>
+        <a href="https://www.vinted.com/member/3180437009?tab=closet" target="_blank" rel="noopener">Vinted</a>
+      </div>
+      <!-- EDIT: short bio (2 to 3 sentences) -->
+      <p class="bio">Hi, I'm the one behind <em>mikinoarchive</em>, a secondhand shop in Dallas. I dig for 80s to Y2K pieces that still feel new, photograph every one myself, and send them off to their next closet.</p>
+    </div>
+  </div>
+
+  <div class="trail" id="trail" aria-hidden="true"></div>
+
+  <div class="stage" id="stage">
+
+    <div class="me" id="me">
+      <!-- EDIT: cut-out photo goes at media/about/me.png -->
+      <img src="media/about/me.png" alt="Portrait of the founder of mikinoarchive" onload="this.parentNode.classList.add('has-photo')" onerror="this.remove()">
+      <div class="ph fine"><div><b>your photo</b>cut-out portrait<br>coming soon</div></div>
+    </div>
+
+    <a class="tag" href="lookbook.html" style="left:6%;top:12%;--rot:-3deg;--d:-1s">Lookbook</a>
+    <a class="tag" href="portfolio.html" style="left:14%;top:66%;--rot:2deg;--d:-2.5s">Portfolio</a>
+    <a class="tag" href="binder.html" style="right:9%;top:22%;--rot:3deg;--d:-.5s">Card binder</a>
+    <a class="tag" href="https://www.instagram.com/mikinoarchive/" target="_blank" rel="noopener" style="right:16%;top:72%;--rot:-2deg;--d:-3.5s">Say hi</a>
+  </div>
+
+  <span class="scrollcue fine"><i></i>Scroll</span>
+  <span class="hint fine">Move your cursor around</span>
+</header>
+
+<main>
+  <!-- ================= STATEMENT ================= -->
+  <section class="statement pad">
+    <!-- EDIT: longer intro. <em> = italic serif, <b> = heavy wide, class "red" on a word makes it red. -->
+    <p id="statement">I'm <b>Hunter</b>, and mikinoarchive is my <em>love letter</em> to clothes with a <b>past life</b>. Every piece is <em>hand-picked,</em> tried on, and shot by me, from <b>80s</b> knits to <b>Y2K</b> sequins, so the good stuff gets <em>worn again</em> instead of <span class="red">forgotten</span>.</p>
+  </section>
+
+  <div class="band" id="band" aria-hidden="true"><div class="track" id="track">
+    <span>Y2K <em>secondhand</em> vintage <em>·</em> Dallas <em>·</em></span>
+    <span>Y2K <em>secondhand</em> vintage <em>·</em> Dallas <em>·</em></span>
+    <span>Y2K <em>secondhand</em> vintage <em>·</em> Dallas <em>·</em></span>
+    <span>Y2K <em>secondhand</em> vintage <em>·</em> Dallas <em>·</em></span>
+  </div></div>
+
+  <!-- ================= FACTS ================= -->
+  <section class="facts pad">
+    <h2>A few <em>things</em></h2>
+    <!-- EDIT: swap these for your own facts -->
+    <div class="fact"><div class="fine">Based in</div><div class="v"><b>Dallas</b>, Texas</div></div>
+    <div class="fact"><div class="fine">Favorite eras</div><div class="v"><b>80s</b> to the year 2000-something</div></div>
+    <div class="fact"><div class="fine">Always hunting for</div><div class="v">lace camis, crochet &amp; <b>sequins</b></div></div>
+    <div class="fact"><div class="fine">Find the pieces</div><div class="v"><b>Depop</b>, Vinted &amp; the binder</div></div>
+  </section>
+
+  <div class="strip pad" id="strip" aria-label="Recent pieces"></div>
+
+  <!-- ================= OUTRO ================= -->
+  <section class="outro pad">
+    <div class="fine">Styling, sourcing, collabs, or just to talk clothes</div>
+    <a class="hi" href="https://www.instagram.com/mikinoarchive/" target="_blank" rel="noopener">Say <em>hi</em></a>
+    <nav class="fine">
+      <a href="lookbook.html">Lookbook ↗</a>
+      <a href="portfolio.html">Portfolio ↗</a>
+      <a href="binder.html">Card binder ↗</a>
+      <a href="https://depop.com/mikinoarchivejp" target="_blank" rel="noopener">Depop ↗</a>
+    </nav>
+  </section>
+</main>
+
+<footer class="pad fine">
+  <span>© <span id="yr">2026</span> Mikino Archive</span>
+  <a href="#top">Back to top ↑</a>
+</footer>
+
+<script src="binder/items.js"></script>
+<script>
+(function () {
+  var reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var items = (window.BINDER_ITEMS || []).filter(function (it) { return it.img && it.img[0]; });
+  var thumbs = items.map(function (it) { return 'binder/thumbs/' + it.img[0]; });
+  document.getElementById('yr').textContent = new Date().getFullYear();
+
+  /* --- name: split into letters, fit to width, hover swaps the font --- */
+  var name = document.getElementById('name');
+  var clip = name.querySelector('.clip');
+  var text = clip.textContent;
+  clip.innerHTML = '';
+  text.split('').forEach(function (c, i) {
+    var s = document.createElement('span');
+    s.className = 'ch'; s.textContent = c === ' ' ? ' ' : c;
+    s.style.transitionDelay = (i * 0.06) + 's';
+    s.setAttribute('aria-hidden', 'true');
+    s.addEventListener('pointerenter', function () {
+      s.style.transitionDelay = '0s';
+      s.classList.add('alt'); fit();
+      clearTimeout(s._t); s._t = setTimeout(function () { s.classList.remove('alt'); fit(); }, 1100);
+    });
+    clip.appendChild(s);
+  });
+  function fit() {
+    var avail = name.parentNode.clientWidth - parseFloat(getComputedStyle(name.parentNode).paddingLeft) * 2;
+    name.style.fontSize = '100px';
+    var w = clip.scrollWidth || 1;
+    name.style.fontSize = Math.min(100 * avail / w, innerHeight * 0.42, 520) + 'px';
+  }
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(fit);
+  fit(); addEventListener('resize', fit);
+  requestAnimationFrame(function () { setTimeout(function () { document.body.classList.add('ready'); }, 120); });
+
+  /* --- cursor trail: clothing cards drop where the cursor goes --- */
+  var hero = document.getElementById('top');
+  var trail = document.getElementById('trail');
+  var lastX = -999, lastY = -999, k = Math.floor(Math.random() * Math.max(thumbs.length, 1));
+  thumbs.slice(0, 24).forEach(function (src) { var im = new Image(); im.src = src; });
+  function drop(x, y) {
+    if (!thumbs.length || reduce) return;
+    var r = trail.getBoundingClientRect();
+    var im = document.createElement('img');
+    im.src = thumbs[k++ % thumbs.length]; im.alt = '';
+    im.style.left = (x - r.left) + 'px'; im.style.top = (y - r.top) + 'px';
+    im.style.setProperty('--r', (Math.random() * 16 - 8).toFixed(1) + 'deg');
+    trail.appendChild(im);
+    im.addEventListener('animationend', function () { im.remove(); });
+  }
+  hero.addEventListener('pointermove', function (e) {
+    if (e.pointerType !== 'mouse') return;
+    if (Math.hypot(e.clientX - lastX, e.clientY - lastY) > 110) { drop(e.clientX, e.clientY); lastX = e.clientX; lastY = e.clientY; }
+  });
+  hero.addEventListener('pointerdown', function (e) {
+    if (e.pointerType === 'mouse' || e.target.closest('a')) return;
+    for (var i = 0; i < 3; i++) (function (i) { setTimeout(function () { drop(e.clientX + (i - 1) * 50, e.clientY - i * 30); }, i * 120); })(i);
+  });
+  // touch screens: a gentle ambient trail so the hero is never static
+  if (!matchMedia('(hover: hover)').matches && !reduce) {
+    var t0 = 0;
+    setInterval(function () {
+      var r = trail.getBoundingClientRect();
+      if (r.bottom < 0 || r.top > innerHeight) return;
+      t0 += 0.9;
+      drop(r.left + r.width * (0.5 + 0.38 * Math.sin(t0)), r.top + r.height * (0.45 + 0.3 * Math.cos(t0 * 1.3)));
+    }, 900);
+  }
+
+  /* --- photo follows the cursor a little; tags are magnetic --- */
+  var me = document.getElementById('me');
+  var tags = [].slice.call(document.querySelectorAll('.tag'));
+  var tx = 0, ty = 0, cx = 0, cy = 0, px = -1e4, py = -1e4;
+  if (!reduce) {
+    addEventListener('pointermove', function (e) {
+      if (e.pointerType !== 'mouse') return;
+      tx = (e.clientX / innerWidth - 0.5) * 36; ty = (e.clientY / innerHeight - 0.5) * 14;
+      px = e.clientX; py = e.clientY;
+    });
+    (function loop() {
+      cx += (tx - cx) * 0.08; cy += (ty - cy) * 0.08;
+      me.style.setProperty('--mx', cx.toFixed(2) + 'px');
+      me.style.setProperty('--my', cy.toFixed(2) + 'px');
+      tags.forEach(function (t) {
+        var b = t.getBoundingClientRect();
+        var dx = px - (b.left + b.width / 2 - (t._x || 0)), dy = py - (b.top + b.height / 2 - (t._y || 0));
+        var d = Math.hypot(dx, dy), pull = d < 150 ? (1 - d / 150) * 0.45 : 0;
+        t._x = (t._x || 0) + (dx * pull - (t._x || 0)) * 0.15;
+        t._y = (t._y || 0) + (dy * pull - (t._y || 0)) * 0.15;
+        t.style.setProperty('--tx', t._x.toFixed(1) + 'px');
+        t.style.setProperty('--ty', t._y.toFixed(1) + 'px');
+      });
+      requestAnimationFrame(loop);
+    })();
+  }
+
+  /* --- statement: split into words, light them up with scroll --- */
+  var st = document.getElementById('statement');
+  (function split(node) {
+    [].slice.call(node.childNodes).forEach(function (n) {
+      if (n.nodeType === 3) {
+        var frag = document.createDocumentFragment();
+        n.textContent.split(/(\s+)/).forEach(function (part) {
+          if (!part) return;
+          if (/^\s+$/.test(part)) { frag.appendChild(document.createTextNode(part)); return; }
+          var s = document.createElement('span'); s.className = 'w'; s.textContent = part;
+          if (node.classList && node.classList.contains('red')) s.classList.add('red');
+          frag.appendChild(s);
+        });
+        n.parentNode.replaceChild(frag, n);
+      } else if (n.nodeType === 1) split(n);
+    });
+  })(st);
+  var words = [].slice.call(st.querySelectorAll('.w'));
+
+  /* --- marquee moves with scroll, skews with speed --- */
+  var band = document.getElementById('band'), track = document.getElementById('track');
+  var offset = 0, lastScroll = scrollY, skew = 0;
+
+  /* --- strip of recent pieces, parallax --- */
+  var strip = document.getElementById('strip');
+  items.slice().sort(function () { return Math.random() - 0.5; }).slice(0, 5).forEach(function (it) {
+    var a = document.createElement('a'); a.href = 'lookbook.html';
+    a.innerHTML = '<img loading="lazy" alt="" src="binder/cards/' + it.img[0] + '">';
+    strip.appendChild(a);
+  });
+  var stripImgs = [].slice.call(strip.querySelectorAll('img'));
+
+  var facts = [].slice.call(document.querySelectorAll('.fact'));
+  var io = new IntersectionObserver(function (es) {
+    es.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } });
+  }, { threshold: 0.3 });
+  facts.forEach(function (f, i) { f.style.transitionDelay = (i * 0.1) + 's'; io.observe(f); });
+
+  function onFrame() {
+    var vh = innerHeight;
+    if (!reduce) {
+      var r = st.getBoundingClientRect();
+      var p = (vh * 0.85 - r.top) / (r.height + vh * 0.35);
+      var lit = Math.floor(Math.max(0, Math.min(1, p)) * words.length);
+      words.forEach(function (w, i) { w.classList.toggle('on', i < lit); });
+
+      var dy = scrollY - lastScroll; lastScroll = scrollY;
+      offset -= 0.6 + Math.abs(dy) * 0.35;
+      var half = track.scrollWidth / 2;
+      if (half && -offset > half) offset += half;
+      track.style.transform = 'translateX(' + offset.toFixed(1) + 'px)';
+      skew += (Math.max(-4, Math.min(4, dy * 0.12)) - skew) * 0.12;
+      band.style.setProperty('--skew', skew.toFixed(2) + 'deg');
+
+      stripImgs.forEach(function (im, i) {
+        var b = im.parentNode.getBoundingClientRect();
+        var c = (b.top + b.height / 2 - vh / 2) / vh;
+        im.style.setProperty('--py', (-c * 40 - 30 * (i % 2 ? 0.3 : 0.6)).toFixed(1) + 'px');
+      });
+    }
+    requestAnimationFrame(onFrame);
+  }
+  onFrame();
+})();
+</script>
+</body>
+</html>
