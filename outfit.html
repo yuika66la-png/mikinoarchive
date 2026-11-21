@@ -554,12 +554,12 @@ function startScene() {
   };
   // Model proportions: long legs (crotch at half height), slim waist, small head.
   const CROTCH = 0.9, HIP = 1.0;
-  const torsoPts = smooth([[0, .9], [.085, .905], [.133, .93], [.153, .99], [.148, 1.04], [.118, 1.12], [.105, 1.17], [.116, 1.24],
+  const torsoPts = smooth([[0, .885], [.07, .89], [.118, .91], [.142, .95], [.148, .995], [.144, 1.04], [.118, 1.12], [.105, 1.17], [.116, 1.24],
     [.133, 1.31], [.13, 1.37], [.14, 1.43], [.126, 1.47], [.084, 1.5], [.046, 1.52], [.04, 1.56], [.039, 1.605]], 160);
   const torsoR = lookup(torsoPts);
   const LEG_X = 0.072, LEG_TOP = 0.96, LEG_TILT = 0.028;
   const legPts = smooth([[0, .05], [.025, .058], [.027, .1], [.039, .22], [.047, .32], [.04, .45], [.042, .52],
-    [.055, .68], [.064, .84], [.066, .965]], 120);
+    [.055, .68], [.066, .84], [.07, .9], [.07, .965]], 120);
   const legR = lookup(legPts);
   const ARM_ANGLE = 0.12, SHOULDER = new THREE.Vector3(0.163, 1.448, 0);
   // Arm profile along its own downward axis (y = minus the distance from the shoulder).
