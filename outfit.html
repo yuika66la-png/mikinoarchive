@@ -627,7 +627,11 @@ function startScene() {
       for (let i = 0; i < d.length; i += 64) { r += d[i]; g += d[i + 1]; b += d[i + 2]; k++; }
       entry.color.setRGB(r / k / 255, g / k / 255, b / k / 255, THREE.SRGBColorSpace);
       tex.needsUpdate = true;
-      for (const u of entry.users) { u.needsUpdate = true; if (u.userData.plain) u.color.copy(entry.color); }
+      for (const u of entry.users) {
+        if (u.userData.tex) u.userData.tex.needsUpdate = true;   // each part has its own copy of the texture
+        if (u.userData.plain) u.color.copy(entry.color);
+        u.needsUpdate = true;
+      }
       needsRender = true;
     };
     img.src = thumb(it);
