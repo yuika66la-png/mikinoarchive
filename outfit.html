@@ -562,7 +562,7 @@ function startScene() {
   const SEAT = { y: 0.955, sy: 0.065, x: 0.062, sx: 0.06, a: 0.026 };
   const bump = (b, x, y, bridged) => {
     const dx = bridged ? Math.max(0, Math.abs(x) - b.x) : Math.abs(x) - b.x;
-    return b.a * Math.exp(-((y - b.y) / b.sy) ** 2 - (dx / b.sx) ** 2);
+    return b.a * Math.exp(-(((y - b.y) / b.sy) ** 2) - (dx / b.sx) ** 2);
   };
   function curve(geo, bridged) {
     const pos = geo.attributes.position;
