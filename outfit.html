@@ -553,8 +553,8 @@ function startScene() {
     return pts[pts.length - 1].x;
   };
   // Model proportions: long legs (crotch at half height), slim waist, small head.
-  const CROTCH = 0.9, HIP = 1.0;
-  const torsoPts = smooth([[0, .885], [.07, .89], [.12, .91], [.148, .95], [.156, .995], [.15, 1.04], [.122, 1.11], [.099, 1.165],
+  const CROTCH = 0.8, HIP = 1.0;
+  const torsoPts = smooth([[0, .8], [.05, .83], [.095, .87], [.128, .91], [.148, .95], [.156, .995], [.15, 1.04], [.122, 1.11], [.099, 1.165],
     [.104, 1.22], [.116, 1.26], [.125, 1.31], [.124, 1.355], [.12, 1.4], [.112, 1.44], [.09, 1.475], [.052, 1.505], [.041, 1.54], [.039, 1.605]], 160);
   // Curves the lathe can't make: the bust pushes forward and the seat pushes back.
   // Clothes get the same shape, but bridged between the two sides so tops don't dip in at the centre.
@@ -672,7 +672,7 @@ function startScene() {
     parent.add(m);
     return m;
   };
-  add(finish(curve(loft(0.8, 1.605, bodyR, 0, 112))), bodyMat);
+  add(finish(curve(loft(0.78, 1.605, bodyR, 0, 112))), bodyMat);
   const head = add(new THREE.SphereGeometry(0.095, 40, 28), bodyMat);
   head.position.y = 1.69;
   head.scale.set(0.86, 1.2, 0.98);
