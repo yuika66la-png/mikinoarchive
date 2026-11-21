@@ -1164,7 +1164,7 @@ function updateInspect(now) {
 
 function showInfo(i) {
   const it = items[i];
-  const rows = [['Brand', it.brand], ['Made in', it.origin], ['Type', it.type], ['Color', it.color], ['Size', it.size], ['Condition', it.cond]]
+  const rows = [['Brand', it.brand], ['Made in', it.origin], ['Type', catLabel(it.cat) || it.type], ['Color', it.color], ['Size', it.size], ['Condition', it.cond]]
     .filter((r) => r[1]);
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const box = $('card-info');

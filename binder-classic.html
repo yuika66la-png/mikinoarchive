@@ -497,6 +497,10 @@
   });
   var wanted = new URLSearchParams(location.search).get('type');
   var activeCat = cats.some(function (c) { return c[0] === wanted; }) ? wanted : null;
+  function catLabel(id) {
+    var c = (window.BINDER_CATS || []).filter(function (c) { return c[0] === id; })[0];
+    return c ? c[1] : '';
+  }
   var items = activeCat ? allItems.filter(function (it) { return it.cat === activeCat; }) : allItems;
 
   /* Type filter: picking one reloads with only those pieces */
@@ -684,7 +688,7 @@
     flipper.classList.remove('flipped');
     $('faceFront').innerHTML = cardHTML(it, true);
 
-    var rows = [['Brand', it.brand], ['Made', it.origin], ['Type', it.type], ['Color', it.color], ['Size', it.size], ['Condition', it.cond], ['Price', it.price]];
+    var rows = [['Brand', it.brand], ['Made', it.origin], ['Type', catLabel(it.cat) || it.type], ['Color', it.color], ['Size', it.size], ['Condition', it.cond], ['Price', it.price]];
     var specs = rows.filter(function (r) { return r[1]; }).map(function (r) {
       return '<div><dt>' + r[0] + '</dt><dd>' + esc(r[1]) + '</dd></div>';
     }).join('');
