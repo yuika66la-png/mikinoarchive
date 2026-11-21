@@ -752,10 +752,10 @@ function startScene() {
       finger.rotation.z = -side * 0.16;
       finger.scale.x = 0.9;
     });
-    const thumb = add(new THREE.CapsuleGeometry(0.0085, 0.026, 4, 10), bodyMat, g);
+    const thumb = add(new THREE.CapsuleGeometry(0.0075, 0.024, 4, 10), bodyMat, g);
     thumb.geometry.translate(0, -0.021, 0);
-    thumb.position.set(-side * 0.003, -0.618, 0.017);
-    thumb.rotation.set(-0.55, 0, -side * 0.22);
+    thumb.position.set(-side * 0.004, -0.62, 0.014);
+    thumb.rotation.set(-0.35, 0, -side * 0.18);
     arms[side] = g;
   }
   const base = add(new THREE.CylinderGeometry(0.3, 0.32, 0.035, 64), woodMat);
