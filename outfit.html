@@ -559,12 +559,15 @@ function startScene() {
   // Curves the lathe can't make: the bust pushes forward and the seat pushes back.
   // Clothes get the same shape, but bridged between the two sides so tops don't dip in at the centre.
   // Broad, soft shapes: wide falloff and a gentle fade toward the sides keep them smooth, not pointed.
-  const BUST = { y: 1.3, sy: 0.075, x: 0.05, sx: 0.07, a: 0.04 };
+  // The bust rises in a long, gentle slope from the upper chest and rounds off quickly underneath.
+  const BUST = { y: 1.285, sy: 0.05, syUp: 0.09, x: 0.05, sx: 0.07, a: 0.04 };
+  const CHEST = { y: 1.405, sy: 0.045, x: 0, sx: 0.11, a: -0.012 };   // keeps the upper chest flat
   const SEAT = { y: 0.96, sy: 0.09, x: 0.055, sx: 0.085, a: 0.012 };
   const BELLY = { y: 1.02, sy: 0.11, x: 0, sx: 0.12, a: -0.042 };   // flattens the tummy
   const bump = (b, x, y, bridged) => {
     const dx = bridged ? Math.max(0, Math.abs(x) - b.x) : Math.abs(x) - b.x;
-    return b.a * Math.exp(-(((y - b.y) / b.sy) ** 2) - (dx / b.sx) ** 2);
+    const sy = y > b.y && b.syUp ? b.syUp : b.sy;
+    return b.a * Math.exp(-(((y - b.y) / sy) ** 2) - (dx / b.sx) ** 2);
   };
   const ease = (t) => t * t * (3 - 2 * t);
   function curve(geo, bridged) {
@@ -574,7 +577,7 @@ function startScene() {
       const r = Math.hypot(x, z);
       if (r < 1e-5) continue;
       const nz = z / r;
-      const d = nz > 0 ? (bump(BUST, x, y, bridged) + bump(BELLY, x, y, false)) * ease(nz) : bump(SEAT, x, y, bridged) * ease(-nz);
+      const d = nz > 0 ? (bump(BUST, x, y, bridged) + bump(CHEST, x, y, false) + bump(BELLY, x, y, false)) * ease(nz) : bump(SEAT, x, y, bridged) * ease(-nz);
       pos.setZ(i, z + Math.sign(z) * d / ZS);   // the mesh is squashed in depth, so push further in geometry space
     }
     geo.computeVertexNormals();
@@ -582,8 +585,9 @@ function startScene() {
   }
   const torsoR = lookup(torsoPts);
   const LEG_X = 0.072, LEG_TOP = 0.96, LEG_TILT = 0.028;
-  const legPts = smooth([[0, .05], [.025, .058], [.027, .1], [.039, .22], [.047, .32], [.04, .45], [.042, .52],
-    [.055, .68], [.066, .84], [.07, .9], [.07, .965]], 120);
+  // Slim ankle, a curve of calf, a narrow knee, then a fuller thigh.
+  const legPts = smooth([[0, .05], [.024, .058], [.024, .1], [.033, .19], [.049, .3], [.044, .38], [.037, .46], [.04, .51],
+    [.049, .58], [.062, .7], [.072, .82], [.077, .9], [.077, .965]], 140);
   const legR = lookup(legPts);
   const ARM_ANGLE = 0.12, SHOULDER = new THREE.Vector3(0.163, 1.448, 0);
   // Arm profile along its own downward axis (y = minus the distance from the shoulder).
