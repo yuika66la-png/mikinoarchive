@@ -334,8 +334,8 @@ const SLEEVE_DEFAULT = { tanks: 'none', tees: 'short', tops: 'long', shirts: 'lo
 const SLEEVE = { 14: 'short', 26: 'short', 30: 'short', 46: 'short', 34: 'none', 31: 'short', 52: 'short', 66: 'short', 95: 'short',
   114: 'short', 116: 'short', 57: 'none', 32: 'long', 62: 'short' };
 const OPEN_FRONT = new Set([8, 57, 58, 59, 61, 72, 75, 79, 115]);
-const SKIRT_HEM = { 15: 0.14, 20: 0.66, 47: 0.52, 48: 0.44, 105: 0.5 };
-const PANTS_HEM = { 68: 0.3 };
+const SKIRT_HEM = { 15: 0.15, 20: 0.74, 47: 0.58, 48: 0.5, 105: 0.56 };
+const PANTS_HEM = { 68: 0.33 };
 // Part of each photo to use as the fabric (fractions of the photo: x0, y0, x1, y1).
 const CROP_DEFAULT = {
   tanks: [.32, .44, .68, .66], tees: [.3, .44, .7, .68], tops: [.3, .42, .7, .68], shirts: [.3, .42, .7, .68],
@@ -493,7 +493,7 @@ function startScene() {
 
   const camera = new THREE.PerspectiveCamera(30, 1, 0.05, 50);
   const controls = new OrbitControls(camera, canvas);
-  controls.target.set(0, 0.9, 0);
+  controls.target.set(0, 0.95, 0);
   controls.enablePan = false;
   controls.enableDamping = true;
   controls.dampingFactor = 0.08;
@@ -540,7 +540,7 @@ function startScene() {
   scene.add(rugEdge);
 
   /* Dress form body. Units are metres. Depth is squashed so the body is oval, not round. */
-  const ZS = 0.74;
+  const ZS = 0.72;
   const smooth = (pts, n) => new THREE.SplineCurve(pts.map(([r, y]) => new THREE.Vector2(r, y))).getPoints(n);
   const lookup = (pts) => (y) => {
     if (y <= pts[0].y) return pts[0].x;
@@ -552,20 +552,22 @@ function startScene() {
     }
     return pts[pts.length - 1].x;
   };
-  const torsoPts = smooth([[0, .8], [.1, .81], [.16, .84], [.185, .9], [.172, .98], [.138, 1.06], [.146, 1.14], [.168, 1.22],
-    [.162, 1.29], [.166, 1.35], [.148, 1.4], [.1, 1.435], [.056, 1.455], [.048, 1.5], [.046, 1.545]], 160);
+  // Model proportions: long legs (crotch at half height), slim waist, small head.
+  const CROTCH = 0.9, HIP = 1.0;
+  const torsoPts = smooth([[0, .9], [.085, .905], [.133, .93], [.153, .99], [.148, 1.04], [.118, 1.12], [.105, 1.17], [.116, 1.24],
+    [.133, 1.31], [.13, 1.37], [.14, 1.43], [.126, 1.47], [.084, 1.5], [.046, 1.52], [.04, 1.56], [.039, 1.605]], 160);
   const torsoR = lookup(torsoPts);
-  const LEG_X = 0.085;
-  const legPts = smooth([[0, .055], [.028, .065], [.031, .1], [.044, .22], [.052, .34], [.046, .46], [.05, .52],
-    [.066, .66], [.074, .78], [.07, .87]], 120);
+  const LEG_X = 0.072, LEG_TOP = 0.96, LEG_TILT = 0.028;
+  const legPts = smooth([[0, .05], [.025, .058], [.027, .1], [.039, .22], [.047, .32], [.04, .45], [.042, .52],
+    [.055, .68], [.064, .84], [.066, .965]], 120);
   const legR = lookup(legPts);
-  const ARM_ANGLE = 0.16, SHOULDER = new THREE.Vector3(0.172, 1.355, 0);
+  const ARM_ANGLE = 0.12, SHOULDER = new THREE.Vector3(0.163, 1.448, 0);
   // Arm profile along its own downward axis (y = minus the distance from the shoulder).
-  const armPts = smooth([[0, -.62], [.022, -.605], [.03, -.58], [.024, -.56], [.034, -.42], [.031, -.3], [.04, -.17],
-    [.046, -.06], [.044, 0], [0, .035]], 120);
+  const armPts = smooth([[0, -.68], [.019, -.665], [.025, -.64], [.019, -.6], [.029, -.46], [.025, -.33], [.034, -.2],
+    [.039, -.07], [.037, 0], [0, .03]], 120);
   const armR = lookup(armPts);
 
-  const bodyMat = new THREE.MeshStandardMaterial({ color: 0xe2cfb2, roughness: .7 });
+  const bodyMat = new THREE.MeshStandardMaterial({ color: 0xe8d6bb, roughness: .5 });
   const woodMat = new THREE.MeshStandardMaterial({ color: 0x6b4428, roughness: .45 });
   const form = new THREE.Group();
   scene.add(form);
@@ -578,15 +580,22 @@ function startScene() {
   const torso = add(new THREE.LatheGeometry(torsoPts, 56), bodyMat);
   torso.scale.z = ZS;
   const head = add(new THREE.SphereGeometry(0.095, 40, 28), bodyMat);
-  head.position.y = 1.645;
-  head.scale.set(0.9, 1.18, 0.98);
+  head.position.y = 1.69;
+  head.scale.set(0.86, 1.2, 0.98);
+  const legs = {};
   for (const side of [-1, 1]) {
-    const leg = add(new THREE.LatheGeometry(legPts, 32), bodyMat);
-    leg.position.x = side * LEG_X;
+    // Each leg hangs from the hip and leans in a little, so the feet sit close together.
+    const g = new THREE.Group();
+    g.position.set(side * LEG_X, LEG_TOP, 0);
+    g.rotation.z = side * LEG_TILT;
+    form.add(g);
+    const leg = add(new THREE.LatheGeometry(legPts, 32), bodyMat, g);
+    leg.position.y = -LEG_TOP;
     leg.scale.z = 0.92;
-    const foot = add(new THREE.SphereGeometry(1, 20, 14), bodyMat);
-    foot.position.set(side * LEG_X, 0.062, 0.035);
-    foot.scale.set(0.034, 0.026, 0.075);
+    const foot = add(new THREE.SphereGeometry(1, 20, 14), bodyMat, g);
+    foot.position.set(0, 0.055 - LEG_TOP, 0.032);
+    foot.scale.set(0.029, 0.023, 0.07);
+    legs[side] = g;
   }
   const arms = {};
   for (const side of [-1, 1]) {
@@ -595,7 +604,7 @@ function startScene() {
     g.rotation.z = side * ARM_ANGLE;
     form.add(g);
     add(new THREE.LatheGeometry(armPts, 28), bodyMat, g);
-    const cap = add(new THREE.SphereGeometry(0.05, 24, 16), bodyMat, g);
+    const cap = add(new THREE.SphereGeometry(0.042, 24, 16), bodyMat, g);
     cap.scale.set(1, 1, .9);
     arms[side] = g;
   }
@@ -657,14 +666,14 @@ function startScene() {
     const n = Math.max(12, Math.round((y1 - y0) * 90));
     for (let i = 0; i <= n; i++) {
       const y = y0 + (y1 - y0) * i / n;
-      let r = (y > 0.8 ? torsoR(y) : 0) + off;
+      let r = (y > CROTCH ? torsoR(y) : 0) + off;
       if (flare) r = Math.max(r, flare(y));
       pts.push(new THREE.Vector2(r, y));
     }
     const geo = gap ? new THREE.LatheGeometry(pts, 56, gap / 2, Math.PI * 2 - gap) : new THREE.LatheGeometry(pts, 56);
     return geo;
   }
-  const aLine = (off, k, from = 0.93) => (y) => (y < from ? torsoR(from) + off + (from - y) * k : 0);
+  const aLine = (off, k, from = HIP) => (y) => (y < from ? torsoR(from) + off + (from - y) * k : 0);
   function legTube(y0, y1, off, widen = 0) {
     const pts = [];
     const n = Math.max(10, Math.round((y1 - y0) * 70));
@@ -701,13 +710,13 @@ function startScene() {
       if (len <= 0) return;
       for (const side of [-1, 1]) {
         put(sleeveTube(len, off), m, arms[side]);
-        put(new THREE.SphereGeometry(0.05 + off, 24, 16, 0, Math.PI * 2, 0, Math.PI / 2 + 0.3), m, arms[side], (s) => { s.scale.z = 0.92; });
+        put(new THREE.SphereGeometry(0.042 + off, 24, 16, 0, Math.PI * 2, 0, Math.PI / 2 + 0.3), m, arms[side], (s) => { s.scale.z = 0.92; });
       }
     };
     const straps = (y, off, m) => {
       for (const side of [-1, 1]) {
         put(new THREE.TorusGeometry(torsoR(y) * ZS + off, 0.007, 6, 24, Math.PI), m, form, (s) => {
-          s.position.set(side * 0.085, y - 0.005, 0);
+          s.position.set(side * 0.07, y - 0.005, 0);
           s.rotation.y = Math.PI / 2;
           s.scale.y = 0.55;
         });
@@ -728,78 +737,78 @@ function startScene() {
       case 'shirts': {
         const off = 0.013, m = mat(f, 4, 1.6);
         if (sleeveLen === 0) {
-          put(torsoTube(0.88, 1.29, off), m, form, oval);
-          if (it.n !== 34) straps(1.29, off, m);
+          put(torsoTube(0.97, 1.37, off), m, form, oval);
+          if (it.n !== 34) straps(1.37, off, m);
         } else {
-          const top = it.cat === 'tops' ? 1.435 : 1.452;
-          put(torsoTube(0.88, top, off), m, form, oval);
+          const top = it.cat === 'tops' ? 1.497 : 1.51;
+          put(torsoTube(0.97, top, off), m, form, oval);
           sleeves(sleeveLen, off + 0.004, mat(f, 1.5, sleeveLen * 4));
-          if (it.cat === 'shirts') collar(1.45, off, mat(f, 6, 0.4));
+          if (it.cat === 'shirts') collar(1.51, off, mat(f, 6, 0.4));
         }
         break;
       }
       case 'knits':
       case 'jackets': {
         const off = 0.03, open = OPEN_FRONT.has(it.n), m = mat(f, 4, 1.8);
-        put(torsoTube(0.83, 1.44, off, null, open ? 0.62 : 0), m, form, oval);
+        put(torsoTube(0.92, 1.5, off, null, open ? 0.62 : 0), m, form, oval);
         sleeves(sleeveLen, off, mat(f, 1.5, 2.2));
-        if (it.cat === 'jackets' && !open) collar(1.45, off - 0.004, mat(f, 6, 0.4));
+        if (it.cat === 'jackets' && !open) collar(1.51, off - 0.004, mat(f, 6, 0.4));
         break;
       }
       case 'dresses': {
         const off = 0.016, m = mat(f, 4, 2.6);
-        const hem = it.n === 32 ? 0.52 : 0.58;
+        const hem = it.n === 32 ? 0.56 : 0.64;
         if (sleeveLen === 0) {
-          put(torsoTube(hem, 1.29, off, aLine(off, 0.32)), m, form, oval);
-          straps(1.29, off, m);
+          put(torsoTube(hem, 1.37, off, aLine(off, 0.32)), m, form, oval);
+          straps(1.37, off, m);
         } else {
-          put(torsoTube(hem, 1.45, off, aLine(off, it.n === 32 ? 0.08 : 0.3)), m, form, oval);
+          put(torsoTube(hem, 1.51, off, aLine(off, it.n === 32 ? 0.08 : 0.3)), m, form, oval);
           sleeves(sleeveLen, off + 0.004, mat(f, 1.5, sleeveLen * 4));
-          if (it.n === 32) collar(1.45, off, mat(f, 6, 0.4));
+          if (it.n === 32) collar(1.51, off, mat(f, 6, 0.4));
         }
         break;
       }
       case 'skirts': {
-        const off = 0.008, hem = SKIRT_HEM[it.n] || 0.5;
-        put(torsoTube(hem, 1.03, off, aLine(off, it.n === 20 ? 0.6 : 0.2)), mat(f, 4, 2), form, oval);
+        const off = 0.008, hem = SKIRT_HEM[it.n] || 0.56;
+        put(torsoTube(hem, 1.15, off, aLine(off, it.n === 20 ? 0.6 : 0.2)), mat(f, 4, 2), form, oval);
         break;
       }
       case 'pants':
       case 'shorts': {
-        const off = 0.009, hem = it.cat === 'shorts' ? 0.6 : PANTS_HEM[it.n] || 0.075;
-        put(torsoTube(0.8, 1.0, off), mat(f, 4, 0.8), form, oval);
+        const off = 0.009, hem = it.cat === 'shorts' ? 0.68 : PANTS_HEM[it.n] || 0.075;
+        put(torsoTube(CROTCH, 1.12, off), mat(f, 4, 0.8), form, oval);
         const widen = it.n === 71 ? 0.05 : it.cat === 'shorts' ? 0.02 : 0.006;
         for (const side of [-1, 1]) {
-          put(legTube(hem, 0.87, 0.012, widen), mat(f, 1.5, (0.87 - hem) * 3), form, (s) => { s.position.x = side * LEG_X; s.scale.z = 0.92; });
+          put(legTube(hem, 0.965, 0.012, widen), mat(f, 1.5, (0.965 - hem) * 3), legs[side], (s) => { s.position.y = -LEG_TOP; s.scale.z = 0.92; });
         }
         break;
       }
       case 'bags': {
         // Hangs from the left hand.
         const m = mat(f, 1, 1), hand = arms[-1];
-        put(new THREE.BoxGeometry(0.2, 0.15, 0.07, 2, 2, 2), m, hand, (s) => { s.position.set(0, -0.82, 0.01); s.rotation.z = ARM_ANGLE; });
-        put(new THREE.TorusGeometry(0.075, 0.008, 8, 32, Math.PI), mat(f, 3, 0.3, true), hand, (s) => { s.position.set(0, -0.745, 0.01); s.rotation.z = ARM_ANGLE; });
+        put(new THREE.BoxGeometry(0.2, 0.15, 0.07, 2, 2, 2), m, hand, (s) => { s.position.set(0, -0.88, 0.01); s.rotation.z = ARM_ANGLE; });
+        put(new THREE.TorusGeometry(0.075, 0.008, 8, 32, Math.PI), mat(f, 3, 0.3, true), hand, (s) => { s.position.set(0, -0.805, 0.01); s.rotation.z = ARM_ANGLE; });
         break;
       }
       case 'accessories': {
         // A scarf: knotted at the neck with two tails.
         const m = mat(f, 3, 0.6);
-        put(new THREE.TorusGeometry(0.07, 0.024, 12, 40), m, form, (s) => { s.position.y = 1.47; s.rotation.x = Math.PI / 2 - 0.15; s.scale.y = 0.85; });
+        put(new THREE.TorusGeometry(0.06, 0.022, 12, 40), m, form, (s) => { s.position.y = 1.53; s.rotation.x = Math.PI / 2 - 0.15; s.scale.y = 0.85; });
         for (const [dx, rz] of [[-0.03, 0.12], [0.035, -0.08]]) {
-          put(new THREE.BoxGeometry(0.06, 0.3, 0.012), mat(f, 1, 2), form, (s) => { s.position.set(dx, 1.31, 0.135); s.rotation.set(-0.12, 0, rz); });
+          put(new THREE.BoxGeometry(0.06, 0.3, 0.012), mat(f, 1, 2), form, (s) => { s.position.set(dx, 1.38, 0.118); s.rotation.set(-0.12, 0, rz); });
         }
         break;
       }
       case 'hats': {
         const m = mat(f, 3, 1);
-        put(new THREE.CylinderGeometry(0.17, 0.17, 0.01, 48), m, form, (s) => { s.position.y = 1.72; });
-        put(new THREE.CylinderGeometry(0.085, 0.1, 0.09, 40), m, form, (s) => { s.position.y = 1.765; });
+        put(new THREE.CylinderGeometry(0.16, 0.16, 0.01, 48), m, form, (s) => { s.position.y = 1.765; });
+        put(new THREE.CylinderGeometry(0.078, 0.09, 0.085, 40), m, form, (s) => { s.position.y = 1.81; });
         break;
       }
       case 'shoes': {
         const m = mat(f, 1, 1);
         for (const side of [-1, 1]) {
-          put(new THREE.SphereGeometry(1, 20, 14), m, form, (s) => { s.position.set(side * LEG_X, 0.065, 0.04); s.scale.set(0.042, 0.032, 0.088); });
+          put(new THREE.SphereGeometry(1, 20, 14), m, legs[side], (s) => { s.position.set(0, 0.058 - LEG_TOP, 0.036); s.scale.set(0.036, 0.029, 0.08); });
         }
         break;
       }
