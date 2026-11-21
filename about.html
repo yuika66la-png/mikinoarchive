@@ -74,7 +74,7 @@
   /* the stage that holds the cut-out photo + floating tags */
   .stage { position: relative; z-index: 2; min-height: 54vh; }
   .me {
-    position: absolute; left: 50%; bottom: 0; width: clamp(200px, 25vw, 360px); aspect-ratio: 3 / 5;
+    position: absolute; left: 50%; bottom: 0; width: clamp(280px, 34vw, 500px); aspect-ratio: 896 / 1000;
     transform: translate(calc(-50% + var(--mx, 0px)), var(--my, 0px)); will-change: transform;
   }
   .me img { width: 100%; height: 100%; object-fit: contain; object-position: bottom; filter: drop-shadow(0 18px 30px rgba(0,0,0,.18)); }
@@ -165,10 +165,10 @@
   @media (max-width: 760px) {
     .under { grid-template-columns: 1fr; }
     .stage { min-height: 62vh; }
-    .me { width: min(62vw, 300px); }
+    .me { width: min(88vw, 400px); }
     .fact { grid-column: span 6; }
     .strip a:nth-child(n+4) { display: none; }
-    .hint { display: none; }
+    .hint, .scrollcue { display: none; }
     .tag { font-size: 10px; }
   }
   @media (prefers-reduced-motion: reduce) {
@@ -194,7 +194,7 @@
   </div>
 
   <!-- EDIT: your name. Each letter flips to italic red when you hover it. -->
-  <h1 class="name" id="name" aria-label="Hunter"><span class="clip">Hunter</span></h1>
+  <h1 class="name" id="name" aria-label="Mikinoarchive"><span class="clip">Mikinoarchive</span></h1>
 
   <div class="under">
     <div>
@@ -204,7 +204,8 @@
         <a href="https://www.vinted.com/member/3180437009?tab=closet" target="_blank" rel="noopener">Vinted</a>
       </div>
       <!-- EDIT: short bio (2 to 3 sentences) -->
-      <p class="bio">Hi, I'm the one behind <em>mikinoarchive</em>, a secondhand shop in Dallas. I dig for 80s to Y2K pieces that still feel new, photograph every one myself, and send them off to their next closet.</p>
+      <p class="bio"><em>Mikinoarchive</em> is an independent fashion project focused on vintage curation, creative styling, and sustainable fashion. Combining a passion for unique finds with a thoughtful approach to visual storytelling.</p>
+      <p class="bio fine" style="margin-top:12px;color:var(--muted)">By Yuika Mikino · Dallas, TX</p>
     </div>
   </div>
 
@@ -214,7 +215,7 @@
 
     <div class="me" id="me">
       <!-- EDIT: cut-out photo goes at media/about/me.png -->
-      <img src="media/about/me.png" alt="Portrait of the founder of mikinoarchive" onload="this.parentNode.classList.add('has-photo')" onerror="this.remove()">
+      <img src="media/about/me.png" alt="Yuika Mikino, founder of mikinoarchive, sitting on the floor in a red lace tank and a white printed skirt" onload="this.parentNode.classList.add('has-photo')" onerror="this.remove()">
       <div class="ph fine"><div><b>your photo</b>cut-out portrait<br>coming soon</div></div>
     </div>
 
@@ -232,7 +233,7 @@
   <!-- ================= STATEMENT ================= -->
   <section class="statement pad">
     <!-- EDIT: longer intro. <em> = italic serif, <b> = heavy wide, class "red" on a word makes it red. -->
-    <p id="statement">I'm <b>Hunter</b>, and mikinoarchive is my <em>love letter</em> to clothes with a <b>past life</b>. Every piece is <em>hand-picked,</em> tried on, and shot by me, from <b>80s</b> knits to <b>Y2K</b> sequins, so the good stuff gets <em>worn again</em> instead of <span class="red">forgotten</span>.</p>
+    <p id="statement">I'm <b>Yuika Mikino</b>, and mikinoarchive is my <em>love letter</em> to clothes with a <b>past life</b>. Every piece is <em>hand-picked,</em> tried on, and shot by me, from <b>80s</b> knits to <b>Y2K</b> sequins, so the good stuff gets <em>worn again</em> instead of <span class="red">forgotten</span>.</p>
   </section>
 
   <div class="band" id="band" aria-hidden="true"><div class="track" id="track">
