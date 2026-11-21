@@ -554,8 +554,29 @@ function startScene() {
   };
   // Model proportions: long legs (crotch at half height), slim waist, small head.
   const CROTCH = 0.9, HIP = 1.0;
-  const torsoPts = smooth([[0, .885], [.07, .89], [.118, .91], [.142, .95], [.148, .995], [.144, 1.04], [.118, 1.12], [.105, 1.17], [.116, 1.24],
-    [.133, 1.31], [.13, 1.37], [.14, 1.43], [.126, 1.47], [.084, 1.5], [.046, 1.52], [.04, 1.56], [.039, 1.605]], 160);
+  const torsoPts = smooth([[0, .885], [.07, .89], [.12, .91], [.148, .95], [.156, .995], [.15, 1.04], [.122, 1.11], [.099, 1.165],
+    [.104, 1.22], [.116, 1.26], [.126, 1.31], [.124, 1.36], [.13, 1.41], [.124, 1.45], [.088, 1.49], [.046, 1.515], [.04, 1.56], [.039, 1.605]], 160);
+  // Curves the lathe can't make: the bust pushes forward and the seat pushes back.
+  // Clothes get the same shape, but bridged between the two sides so tops don't dip in at the centre.
+  const BUST = { y: 1.312, sy: 0.046, x: 0.054, sx: 0.04, a: 0.04 };
+  const SEAT = { y: 0.955, sy: 0.065, x: 0.062, sx: 0.06, a: 0.026 };
+  const bump = (b, x, y, bridged) => {
+    const dx = bridged ? Math.max(0, Math.abs(x) - b.x) : Math.abs(x) - b.x;
+    return b.a * Math.exp(-((y - b.y) / b.sy) ** 2 - (dx / b.sx) ** 2);
+  };
+  function curve(geo, bridged) {
+    const pos = geo.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+      const r = Math.hypot(x, z);
+      if (r < 1e-5) continue;
+      const nz = z / r;
+      const d = nz > 0 ? bump(BUST, x, y, bridged) * nz ** 1.5 : bump(SEAT, x, y, bridged) * (-nz) ** 1.5;
+      pos.setZ(i, z + Math.sign(z) * d / ZS);   // the mesh is squashed in depth, so push further in geometry space
+    }
+    geo.computeVertexNormals();
+    return geo;
+  }
   const torsoR = lookup(torsoPts);
   const LEG_X = 0.072, LEG_TOP = 0.96, LEG_TILT = 0.028;
   const legPts = smooth([[0, .05], [.025, .058], [.027, .1], [.039, .22], [.047, .32], [.04, .45], [.042, .52],
@@ -577,7 +598,7 @@ function startScene() {
     parent.add(m);
     return m;
   };
-  const torso = add(new THREE.LatheGeometry(torsoPts, 56), bodyMat);
+  const torso = add(curve(new THREE.LatheGeometry(torsoPts, 72)), bodyMat);
   torso.scale.z = ZS;
   const head = add(new THREE.SphereGeometry(0.095, 40, 28), bodyMat);
   head.position.y = 1.69;
@@ -670,8 +691,8 @@ function startScene() {
       if (flare) r = Math.max(r, flare(y));
       pts.push(new THREE.Vector2(r, y));
     }
-    const geo = gap ? new THREE.LatheGeometry(pts, 56, gap / 2, Math.PI * 2 - gap) : new THREE.LatheGeometry(pts, 56);
-    return geo;
+    const geo = gap ? new THREE.LatheGeometry(pts, 72, gap / 2, Math.PI * 2 - gap) : new THREE.LatheGeometry(pts, 72);
+    return curve(geo, true);
   }
   const aLine = (off, k, from = HIP) => (y) => (y < from ? torsoR(from) + off + (from - y) * k : 0);
   function legTube(y0, y1, off, widen = 0) {
@@ -715,7 +736,7 @@ function startScene() {
     };
     const straps = (y, off, m) => {
       for (const side of [-1, 1]) {
-        put(new THREE.TorusGeometry(torsoR(y) * ZS + off, 0.007, 6, 24, Math.PI), m, form, (s) => {
+        put(new THREE.TorusGeometry(torsoR(y) * ZS + off + 0.008, 0.007, 6, 24, Math.PI), m, form, (s) => {
           s.position.set(side * 0.07, y - 0.005, 0);
           s.rotation.y = Math.PI / 2;
           s.scale.y = 0.55;
@@ -795,7 +816,7 @@ function startScene() {
         const m = mat(f, 3, 0.6);
         put(new THREE.TorusGeometry(0.06, 0.022, 12, 40), m, form, (s) => { s.position.y = 1.53; s.rotation.x = Math.PI / 2 - 0.15; s.scale.y = 0.85; });
         for (const [dx, rz] of [[-0.03, 0.12], [0.035, -0.08]]) {
-          put(new THREE.BoxGeometry(0.06, 0.3, 0.012), mat(f, 1, 2), form, (s) => { s.position.set(dx, 1.38, 0.118); s.rotation.set(-0.12, 0, rz); });
+          put(new THREE.BoxGeometry(0.06, 0.3, 0.012), mat(f, 1, 2), form, (s) => { s.position.set(dx, 1.4, 0.142); s.rotation.set(-0.3, 0, rz); });
         }
         break;
       }
