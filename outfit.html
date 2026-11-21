@@ -604,8 +604,10 @@ function startScene() {
     const disc = b * b - 4 * a * c;
     return disc < 0 ? 0 : Math.max(0, (-b + Math.sqrt(disc)) / (2 * a));
   }
-  const K = 55;   // lower = softer blend between hips and thighs
-  const smax = (a, b) => { const m = Math.max(a, b); return m + Math.log(Math.exp(K * (a - m)) + Math.exp(K * (b - m))) / K; };
+  // Smooth maximum that only rounds where the two are within BLEND of each other, and is exact elsewhere,
+  // so the thighs below the hips stay exactly the legs' shape (no lip at the bottom edge).
+  const BLEND = 0.04;
+  const smax = (a, b) => { const h = Math.max(BLEND - Math.abs(a - b), 0) / BLEND; return Math.max(a, b) + h * h * BLEND / 4; };
   function bodyR(phi, y) {
     const sx = Math.sin(phi), cz = Math.cos(phi), t = torsoR(y);
     const torso = y > CROTCH ? ellipseR(sx, cz, t + SH(y), t * ZS) : 0;
