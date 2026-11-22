@@ -696,6 +696,7 @@ scene.add(backBoard);
 const spine = new THREE.Mesh(new THREE.BoxGeometry(SPINE * 2 + 0.3, BT * 0.85, BH - 0.1), leatherMat);
 spine.position.set(0, BT * 0.425, 0);
 spine.receiveShadow = true;
+spine.visible = false;                 // hidden while closed; tick() shows it as the cover opens
 scene.add(spine);
 
 const qFront = new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI / 2, 0, 0));
@@ -1531,6 +1532,7 @@ function tick(now) {
   if (cover.update(now)) moving = true;
   leaves.forEach((leaf) => { if (leaf.update(now)) moving = true; });
   rings.visible = cover.angle > 1.1;
+  spine.visible = cover.angle > 0.02;   // the flat spine strip only shows once the cover starts to open
 
   const k = reduceMotion ? 1 : 1 - Math.exp(-dt * 5);
   const before = camState.target.x + camState.target.z + camState.dist + camState.yaw + camState.pitch;
