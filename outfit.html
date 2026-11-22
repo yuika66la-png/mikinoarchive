@@ -345,6 +345,15 @@ const CROP_DEFAULT = {
 };
 const CROP = { 2: [.2, .25, .75, .65], 13: [.25, .3, .6, .7], 15: [.4, .45, .62, .8], 20: [.35, .62, .75, .85],
   21: [.52, .15, .72, .55], 49: [.4, .2, .7, .65], 106: [.35, .45, .65, .75], 107: [.3, .4, .7, .7] };
+// Strap width, read from each photo: spaghetti straps, medium, wide tank straps, and wide-cut sleeveless shoulders.
+const STRAP_WIDTH = { thin: 0.011, medium: 0.022, wide: 0.034, extra: 0.05 };
+const STRAP = {
+  3: 'thin', 5: 'thin', 16: 'thin', 25: 'thin', 40: 'thin', 44: 'thin', 45: 'thin', 11: 'thin', 19: 'thin',
+  33: 'medium', 35: 'medium', 67: 'medium', 82: 'medium',
+  6: 'wide', 10: 'wide', 28: 'wide', 36: 'wide', 41: 'wide', 73: 'wide', 80: 'wide', 92: 'wide', 109: 'wide',
+  17: 'extra', 29: 'extra', 43: 'extra', 63: 'extra', 69: 'extra', 81: 'extra', 91: 'extra', 93: 'extra',
+};
+const strapWidth = (it) => STRAP_WIDTH[STRAP[it.n] || (it.cat === 'dresses' ? 'thin' : 'medium')];
 const sleeveOf = (it) => SLEEVE[it.n] || SLEEVE_DEFAULT[it.cat] || 'none';
 
 /* ---------- Outfit state ---------- */
@@ -886,21 +895,49 @@ function startScene() {
       }
       return null;
     }
-    const straps = (y, off, m) => {
-      const lift = off + 0.009;
+    // One strap's path at distance x from the centre line: up the front, over the shoulder, down the back.
+    function strapPath(x, y, lift) {
       const front = [], backPts = [];
       for (let yy = y - 0.015; yy < 1.6; yy += 0.004) {
-        const f = surfaceAt(STRAP_X, yy, lift, false), b = surfaceAt(STRAP_X, yy, lift, true);
+        const f = surfaceAt(x, yy, lift, false), b = surfaceAt(x, yy, lift, true);
         if (!f || !b || f.z - b.z < 0.035) break;   // nearly at the top of the shoulder
         front.push(f);
         backPts.unshift(b);
       }
-      if (front.length < 3) return;
+      if (front.length < 3) return null;
       const top = front[front.length - 1], topB = backPts[0];
-      const apex = new THREE.Vector3(STRAP_X, top.y + 0.004, (top.z + topB.z) / 2);
-      const path = [...front, apex, ...backPts];
+      const apex = new THREE.Vector3(x, top.y + 0.004, (top.z + topB.z) / 2);
+      return new THREE.CatmullRomCurve3([...front, apex, ...backPts], false, 'centripetal');
+    }
+    // Thin straps are round cords; wider ones are flat bands traced along both edges so they sit on the shoulder.
+    const straps = (y, off, m, width) => {
+      const lift = off + 0.009;
+      if (width > 0.012) {
+        const cx = STRAP_X + (width - 0.011) * 0.3;
+        const a = strapPath(cx - width / 2, y, lift), b = strapPath(cx + width / 2, y, lift);
+        if (a && b) {
+          const N = 72, pa = a.getSpacedPoints(N), pb = b.getSpacedPoints(N);
+          for (const side of [-1, 1]) {
+            const pos = [], uv = [], idx = [];
+            for (let i = 0; i <= N; i++) {
+              pos.push(side * pa[i].x, pa[i].y, pa[i].z, side * pb[i].x, pb[i].y, pb[i].z);
+              uv.push(0, i / N, 1, i / N);
+              if (i < N) { const k = i * 2; idx.push(k, k + 1, k + 2, k + 1, k + 3, k + 2); }
+            }
+            const geo = new THREE.BufferGeometry();
+            geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+            geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+            geo.setIndex(idx);
+            geo.computeVertexNormals();
+            put(geo, m, form);
+          }
+          return;
+        }
+      }
+      const c = strapPath(STRAP_X, y, lift);
+      if (!c) return;
       for (const side of [-1, 1]) {
-        const pts = path.map((p) => new THREE.Vector3(side * p.x, p.y, p.z));
+        const pts = c.points.map((p) => new THREE.Vector3(side * p.x, p.y, p.z));
         put(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts, false, 'centripetal'), 64, 0.0055, 8, false), m, form);
       }
     };
@@ -920,7 +957,7 @@ function startScene() {
         const off = 0.013, m = mat(f, 4, 1.6);
         if (sleeveLen === 0) {
           put(torsoTube(0.97, 1.37, off, null, 0, false), m, form, oval);
-          if (it.n !== 34) straps(1.37, off, m);
+          if (it.n !== 34) straps(1.37, off, m, strapWidth(it));
         } else {
           const top = it.cat === 'tops' ? 1.497 : 1.51;
           put(torsoTube(0.97, top, off), m, form, oval);
@@ -942,7 +979,7 @@ function startScene() {
         const hem = it.n === 32 ? 0.56 : 0.64;
         if (sleeveLen === 0) {
           put(torsoTube(hem, 1.37, off, aLine(off, 0.32), 0, false), m, form, oval);
-          straps(1.37, off, m);
+          straps(1.37, off, m, strapWidth(it));
         } else {
           put(torsoTube(hem, 1.51, off, aLine(off, it.n === 32 ? 0.08 : 0.3)), m, form, oval);
           sleeves(sleeveLen, off + 0.004, mat(f, 1.5, sleeveLen * 4));
