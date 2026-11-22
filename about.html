@@ -331,15 +331,20 @@
     if (e.pointerType === 'mouse' || e.target.closest('a')) return;
     for (var i = 0; i < 3; i++) (function (i) { setTimeout(function () { drop(e.clientX + (i - 1) * 50, e.clientY - i * 30); }, i * 120); })(i);
   });
-  // touch screens: a gentle ambient trail so the hero is never static
+  // touch screens (no hover): photos pop up at random spots across the hero
   if (!matchMedia('(hover: hover)').matches && !reduce) {
-    var t0 = 0;
+    var lastRX = -1, lastRY = -1;
     setInterval(function () {
+      if (document.hidden) return;
       var r = trail.getBoundingClientRect();
       if (r.bottom < 0 || r.top > innerHeight) return;
-      t0 += 0.9;
-      drop(r.left + r.width * (0.5 + 0.38 * Math.sin(t0)), r.top + r.height * (0.45 + 0.3 * Math.cos(t0 * 1.3)));
-    }, 900);
+      // pick a random point, re-rolling a few times so it doesn't land right on the last one
+      var fx, fy, n = 0;
+      do { fx = 0.1 + Math.random() * 0.8; fy = 0.1 + Math.random() * 0.8; }
+      while (++n < 6 && Math.hypot((fx - lastRX) * r.width, (fy - lastRY) * r.height) < 140);
+      lastRX = fx; lastRY = fy;
+      drop(r.left + r.width * fx, r.top + r.height * fy);
+    }, 650);
   }
 
   /* --- photo follows the cursor a little; tags are magnetic --- */
