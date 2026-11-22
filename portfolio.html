@@ -102,8 +102,7 @@
     background: linear-gradient(180deg, rgba(0,0,0,.38), transparent 30%, transparent 62%, rgba(0,0,0,.32)), var(--c1); opacity: .55; mix-blend-mode: multiply; }
   .gen.has-frames::before { opacity: .35; }
   .gen.has-frames::after { opacity: .07; }
-  .gen.has-frames .ring, .gen.has-frames .core, .gen.has-frames .cap { position: relative; }
-  .gen.has-frames .cap { position: absolute; }
+  .gen.has-frames .ring { position: relative; }
   @keyframes gen-fade { 0% { opacity: 0; transform: scale(1.02); } 4% { opacity: 1; } 25% { opacity: 1; } 30% { opacity: 0; transform: scale(1.09); } 100% { opacity: 0; } }
 
   .bottom { display: grid; grid-template-columns: 1fr auto; gap: 20px; align-items: end; }
