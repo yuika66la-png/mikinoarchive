@@ -69,6 +69,32 @@
   .tile .no { position: absolute; left: 6px; bottom: 6px; z-index: 1; color: #fff; mix-blend-mode: difference; }
   .tile a { position: absolute; inset: 0; z-index: 2; }
 
+  /* Animated thumbnail: generated in the page for any tile whose Instagram media won't load
+     (expired links). Colours come from that post's palette in the feed. */
+  .gen { position: absolute; inset: 0; overflow: hidden; display: grid; place-items: center; color: #fff;
+    background: linear-gradient(135deg, var(--c1), var(--c2) 45%, var(--c3)); background-size: 260% 260%;
+    animation: gen-pan 9s ease-in-out infinite alternate; }
+  .gen::before { content: ""; position: absolute; inset: -40%;
+    background: radial-gradient(circle at 30% 30%, var(--c4) 0 18%, transparent 42%),
+                radial-gradient(circle at 70% 75%, var(--c2) 0 14%, transparent 38%);
+    opacity: .75; mix-blend-mode: screen; animation: gen-drift 14s linear infinite; }
+  .gen::after { content: ""; position: absolute; inset: 0; opacity: .18; pointer-events: none;
+    background-image: repeating-linear-gradient(0deg, rgba(255,255,255,.5) 0 1px, transparent 1px 3px); animation: gen-scan 1.2s steps(3) infinite; }
+  .gen .ring { position: relative; width: 74%; aspect-ratio: 1; max-width: 150px; animation: gen-spin 16s linear infinite; }
+  .gen .ring text { font: 700 9.6px var(--f-sans); letter-spacing: .22em; fill: #fff; text-transform: uppercase; }
+  .gen .core { position: absolute; display: grid; place-items: center; width: 30%; max-width: 54px; aspect-ratio: 1; border-radius: 50%;
+    background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.7); backdrop-filter: blur(3px); animation: gen-pulse 2.4s ease-in-out infinite; }
+  .gen .core svg { width: 38%; fill: #fff; }
+  .gen .core img { width: 62%; filter: brightness(0) invert(1); }
+  .gen .cap { position: absolute; left: 8px; right: 8px; top: 8px; font: italic 400 clamp(13px, 1.3vw, 17px)/1.05 var(--f-serif); text-shadow: 0 1px 8px rgba(0,0,0,.35);
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  @keyframes gen-pan { to { background-position: 100% 100%; } }
+  @keyframes gen-drift { to { transform: rotate(360deg); } }
+  @keyframes gen-spin { to { transform: rotate(360deg); } }
+  @keyframes gen-pulse { 50% { transform: scale(1.12); background: rgba(255,255,255,.28); } }
+  @keyframes gen-scan { to { background-position: 0 3px; } }
+  .tile:hover .gen .ring { animation-duration: 5s; }
+
   .bottom { display: grid; grid-template-columns: 1fr auto; gap: 20px; align-items: end; }
   .corner { max-width: 46ch; }
   .corner.r { text-align: right; }
@@ -134,6 +160,7 @@
     html { scroll-behavior: auto; }
     .tile img, .tile video { transition: none; }
     .tile:hover img, .tile:hover video { transform: none; }
+    .gen, .gen::before, .gen::after, .gen .ring, .gen .core { animation: none; }
   }
 </style>
 </head>
@@ -253,6 +280,31 @@
   var IG = "https://www.instagram.com/mikinoarchive/";
   var strip = document.getElementById("strip");
 
+  function rgb(v, fb) { return v ? "rgb(" + v + ")" : fb; }
+  function esc(t) { return String(t).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+  /* Builds the animated thumbnail for a tile with no loadable media. */
+  function generated(fig, post, n) {
+    if (fig.querySelector(".gen")) return;
+    var pal = (post && post.palette) || {};
+    var g = document.createElement("div");
+    g.className = "gen"; g.setAttribute("aria-hidden", "true");
+    g.style.setProperty("--c1", rgb(pal.vibrantDark || pal.mutedDark, "#5e0303"));
+    g.style.setProperty("--c2", rgb(pal.vibrant || pal.muted, "#ac0606"));
+    g.style.setProperty("--c3", rgb(pal.mutedDark || pal.dominant, "#2a0101"));
+    g.style.setProperty("--c4", rgb(pal.vibrantLight || pal.mutedLight, "#ffd9d9"));
+    var label = (post && post.video ? "Watch the reel" : "View the post") + " \u00b7 mikinoarchive \u00b7 No. " + n + " \u00b7 ";
+    var id = "gp" + n;
+    var core = post && post.video
+      ? '<svg viewBox="0 0 10 10"><path d="M2.5 1.2v7.6L9 5z"/></svg>'
+      : '<img src="media/mikino-logo.png" alt="">';
+    g.innerHTML =
+      '<svg class="ring" viewBox="0 0 100 100"><defs><path id="' + id + '" d="M50 50m-38 0a38 38 0 1 1 76 0a38 38 0 1 1-76 0"/></defs>' +
+      '<text><textPath href="#' + id + '" textLength="236">' + esc(label) + '</textPath></text></svg>' +
+      '<span class="core">' + core + '</span>' +
+      (post && post.alt ? '<span class="cap">' + esc(post.alt.split("\n")[0].slice(0, 60)) + '</span>' : "");
+    fig.insertBefore(g, fig.querySelector(".no") || fig.querySelector("a"));
+  }
+
   function tile(post, i) {
     var n = String(i + 1).padStart(2, "0");
     var fig = document.createElement("figure");
@@ -264,12 +316,14 @@
         m.muted = true; m.loop = true; m.autoplay = true; m.playsInline = true;
         m.setAttribute("playsinline", ""); if (post.poster) m.poster = post.poster;
       } else { m.loading = "lazy"; m.alt = post.alt || "mikinoarchive work no. " + n; }
-      m.addEventListener("error", function () { m.remove(); });
+      m.addEventListener("error", function () { m.remove(); generated(fig, post, n); });
       m.src = post.src;
       fig.appendChild(m);
       var no = document.createElement("span");
       no.className = "no fine"; no.textContent = n;
       fig.appendChild(no);
+    } else if (post) {
+      generated(fig, post, n);
     }
     var a = document.createElement("a");
     a.href = (post && post.link) || IG; a.target = "_blank"; a.rel = "noopener";
@@ -285,7 +339,7 @@
     var size = (p.sizes && (p.sizes.medium || p.sizes.large)) || {};
     var video = p.mediaType === "VIDEO";
     return { video: video, src: video ? p.mediaUrl : (size.mediaUrl || p.mediaUrl || p.thumbnailUrl),
-             poster: p.thumbnailUrl, link: p.permalink, alt: (p.prunedCaption || p.caption || "").slice(0, 120) };
+             poster: p.thumbnailUrl, link: p.permalink, palette: p.colorPalette, alt: (p.prunedCaption || p.caption || "").slice(0, 120) };
   }
 
   if (PICKS.length) {
