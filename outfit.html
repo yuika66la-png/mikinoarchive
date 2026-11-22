@@ -354,6 +354,24 @@ const STRAP = {
   17: 'extra', 29: 'extra', 43: 'extra', 63: 'extra', 69: 'extra', 81: 'extra', 91: 'extra', 93: 'extra',
 };
 const strapWidth = (it) => STRAP_WIDTH[STRAP[it.n] || (it.cat === 'dresses' ? 'thin' : 'medium')];
+// Neckline, read from each photo. Tanks, camis and strappy dresses use the -low versions (their top sits at the bust).
+const NECK = {
+  // U-neck
+  3: 'u', 6: 'u', 10: 'u', 17: 'u', 28: 'u', 41: 'u', 43: 'u', 33: 'u', 67: 'u', 73: 'u', 80: 'u', 109: 'u', 45: 'u',
+  // V-neck
+  14: 'v', 19: 'v', 24: 'v', 11: 'v', 23: 'v', 25: 'v', 35: 'v', 36: 'v', 38: 'v', 40: 'v', 44: 'v', 46: 'v', 60: 'v',
+  62: 'v', 63: 'v', 69: 'v', 74: 'v', 85: 'v', 86: 'v', 88: 'v', 92: 'v', 96: 'v', 98: 'v', 100: 'v', 113: 'v', 12: 'v',
+  // scoop, square, straight across
+  26: 'scoop', 30: 'scoop', 42: 'scoop', 65: 'scoop', 76: 'scoop', 87: 'scoop', 108: 'scoop',
+  90: 'square', 5: 'straight', 16: 'straight', 34: 'straight',
+};
+function neckOf(it) {
+  const low = it.cat === 'tanks' || (it.cat === 'dresses' && sleeveOf(it) === 'none') || (it.cat === 'tops' && sleeveOf(it) === 'none');
+  let k = NECK[it.n] || (low ? 'u' : 'crew');
+  if (low) k = (k === 'v' ? 'v' : k === 'straight' ? 'straight' : 'u') + '-low';
+  else if (k === 'straight') k = 'crew';
+  return k;
+}
 const sleeveOf = (it) => SLEEVE[it.n] || SLEEVE_DEFAULT[it.cat] || 'none';
 
 /* ---------- Outfit state ---------- */
@@ -679,14 +697,15 @@ function startScene() {
   }
   // A surface swept around the body: rFn(angle, height) gives the distance from the centre line.
   // A gap opens it at the front (open jackets); otherwise its seam is hidden at the back.
-  function loft(y0, y1, rFn, gap = 0, S = 84) {
+  function loft(y0, y1, rFn, gap = 0, S = 84, topFn = null) {
     const rows = Math.max(8, Math.round((y1 - y0) * 160));
     const p0 = gap ? gap / 2 : Math.PI, pl = Math.PI * 2 - gap;
     const pos = new Float32Array((rows + 1) * (S + 1) * 3), uv = new Float32Array((rows + 1) * (S + 1) * 2), idx = [];
     for (let i = 0, k = 0; i <= rows; i++) {
-      const y = y0 + (y1 - y0) * i / rows;
       for (let j = 0; j <= S; j++, k++) {
-        const phi = p0 + pl * j / S, r = rFn(phi, y);
+        const phi = p0 + pl * j / S;
+        const y = y0 + ((topFn ? topFn(phi) : y1) - y0) * i / rows;   // a neckline lowers the top edge at the front
+        const r = rFn(phi, y);
         pos.set([r * Math.sin(phi), y, r * Math.cos(phi)], k * 3);
         uv.set([j / S, i / rows], k * 2);
       }
@@ -827,13 +846,35 @@ function startScene() {
   }
 
   // A tube around the torso from y0 up to y1. `flare` widens it below the hips (skirts, dresses).
-  function torsoTube(y0, y1, off, flare, gap, withArms = true) {
+  function torsoTube(y0, y1, off, flare, gap, withArms = true, neck = null) {
     return finish(curve(loft(y0, y1, (phi, y) => {
       let r = bodyR(phi, y, withArms) + off;
       const f = flare ? flare(y) : 0;
       if (f > 0) r = Math.max(r, ellipseR(Math.sin(phi), Math.cos(phi), f, f * ZS));
       return r;
-    }, gap || 0), true));
+    }, gap || 0, 96, neck ? neckTop(y1, neck) : null), true));
+  }
+  // Necklines: how far the front edge drops below the top, by angle from the centre front.
+  // `low` is for tank and cami tops (which end at the bust line), otherwise the top ends at the neck.
+  const NECKS = {
+    crew: { d: 0.018, w: 0.75 }, scoop: { d: 0.075, w: 0.85 }, u: { d: 0.11, w: 0.72 },
+    v: { d: 0.14, w: 0.62 }, square: { d: 0.1, w: 0.62 },
+    'u-low': { d: 0.065, w: 0.8 }, 'v-low': { d: 0.085, w: 0.8 }, 'straight-low': { d: 0, w: 0.8 },
+  };
+  function neckTop(y1, kind) {
+    const n = NECKS[kind];
+    if (!n || !n.d) return null;
+    const shape = kind.split('-')[0];
+    return (phi) => {
+      const a = Math.abs(((phi + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI);
+      const u = a / n.w;
+      if (u >= 1) return y1;
+      const k = shape === 'v' ? 1 - u
+        : shape === 'square' ? (u < 0.82 ? 1 : (1 - u) / 0.18)
+        : shape === 'u' ? Math.sqrt(1 - u ** 4)
+        : Math.sqrt(1 - u * u);                      // crew, scoop
+      return y1 - n.d * k;
+    };
   }
   const aLine = (off, k, from = HIP) => (y) => (y < from ? torsoR(from) + off + (from - y) * k : 0);
   function legTube(y0, y1, off, widen = 0) {
@@ -956,11 +997,11 @@ function startScene() {
       case 'shirts': {
         const off = 0.013, m = mat(f, 4, 1.6);
         if (sleeveLen === 0) {
-          put(torsoTube(0.97, 1.37, off, null, 0, false), m, form, oval);
+          put(torsoTube(0.97, 1.37, off, null, 0, false, neckOf(it)), m, form, oval);
           if (it.n !== 34) straps(1.37, off, m, strapWidth(it));
         } else {
           const top = it.cat === 'tops' ? 1.497 : 1.51;
-          put(torsoTube(0.97, top, off), m, form, oval);
+          put(torsoTube(0.97, top, off, null, 0, true, it.cat === 'shirts' ? null : neckOf(it)), m, form, oval);
           sleeves(sleeveLen, off + 0.004, mat(f, 1.5, sleeveLen * 4));
           if (it.cat === 'shirts') collar(1.51, off, mat(f, 6, 0.4));
         }
@@ -978,10 +1019,10 @@ function startScene() {
         const off = 0.016, m = mat(f, 4, 2.6);
         const hem = it.n === 32 ? 0.56 : 0.64;
         if (sleeveLen === 0) {
-          put(torsoTube(hem, 1.37, off, aLine(off, 0.32), 0, false), m, form, oval);
+          put(torsoTube(hem, 1.37, off, aLine(off, 0.32), 0, false, neckOf(it)), m, form, oval);
           straps(1.37, off, m, strapWidth(it));
         } else {
-          put(torsoTube(hem, 1.51, off, aLine(off, it.n === 32 ? 0.08 : 0.3)), m, form, oval);
+          put(torsoTube(hem, 1.51, off, aLine(off, it.n === 32 ? 0.08 : 0.3), 0, true, it.n === 32 ? null : neckOf(it)), m, form, oval);
           sleeves(sleeveLen, off + 0.004, mat(f, 1.5, sleeveLen * 4));
           if (it.n === 32) collar(1.51, off, mat(f, 6, 0.4));
         }
