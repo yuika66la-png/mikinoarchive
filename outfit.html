@@ -868,7 +868,7 @@ function startScene() {
     };
     // Shoulder straps that lie on the body: traced up the front of the garment, over the top of the
     // shoulder and down the back, at a fixed distance from the centre line.
-    const STRAP_X = 0.083;
+    const STRAP_X = 0.088;
     function surfaceAt(x, y, off, back) {
       const rAt = (phi) => bodyR(phi, y, false) + off;
       const g = (phi) => rAt(phi) * Math.sin(phi) - x;
@@ -891,17 +891,17 @@ function startScene() {
       const front = [], backPts = [];
       for (let yy = y - 0.015; yy < 1.6; yy += 0.004) {
         const f = surfaceAt(STRAP_X, yy, lift, false), b = surfaceAt(STRAP_X, yy, lift, true);
-        if (!f || !b || f.z - b.z < 0.012) break;   // reached the top of the shoulder
+        if (!f || !b || f.z - b.z < 0.035) break;   // nearly at the top of the shoulder
         front.push(f);
         backPts.unshift(b);
       }
       if (front.length < 3) return;
       const top = front[front.length - 1], topB = backPts[0];
-      const apex = new THREE.Vector3(STRAP_X, top.y + 0.006, (top.z + topB.z) / 2);
+      const apex = new THREE.Vector3(STRAP_X, top.y + 0.004, (top.z + topB.z) / 2);
       const path = [...front, apex, ...backPts];
       for (const side of [-1, 1]) {
         const pts = path.map((p) => new THREE.Vector3(side * p.x, p.y, p.z));
-        put(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 64, 0.0055, 8, false), m, form, (s) => { s.scale.x = 1; });
+        put(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts, false, 'centripetal'), 64, 0.0055, 8, false), m, form);
       }
     };
     const collar = (y, off, m) => {
