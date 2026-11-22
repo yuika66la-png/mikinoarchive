@@ -94,6 +94,17 @@
   @keyframes gen-pulse { 50% { transform: scale(1.12); background: rgba(255,255,255,.28); } }
   @keyframes gen-scan { to { background-position: 0 3px; } }
   .tile:hover .gen .ring { animation-duration: 5s; }
+  /* Frames from the reel cross-fade behind the ring like a GIF, tinted with the post's colours. */
+  .gen .frames { position: absolute; inset: 0; }
+  .gen .frames img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0;
+    animation: gen-fade 8s linear infinite; animation-delay: calc(var(--i) * 2s - 8s); }
+  .gen .frames::after { content: ""; position: absolute; inset: 0;
+    background: linear-gradient(180deg, rgba(0,0,0,.38), transparent 30%, transparent 62%, rgba(0,0,0,.32)), var(--c1); opacity: .55; mix-blend-mode: multiply; }
+  .gen.has-frames::before { opacity: .35; }
+  .gen.has-frames::after { opacity: .07; }
+  .gen.has-frames .ring, .gen.has-frames .core, .gen.has-frames .cap { position: relative; }
+  .gen.has-frames .cap { position: absolute; }
+  @keyframes gen-fade { 0% { opacity: 0; transform: scale(1.02); } 4% { opacity: 1; } 25% { opacity: 1; } 30% { opacity: 0; transform: scale(1.09); } 100% { opacity: 0; } }
 
   .bottom { display: grid; grid-template-columns: 1fr auto; gap: 20px; align-items: end; }
   .corner { max-width: 46ch; }
@@ -160,7 +171,8 @@
     html { scroll-behavior: auto; }
     .tile img, .tile video { transition: none; }
     .tile:hover img, .tile:hover video { transform: none; }
-    .gen, .gen::before, .gen::after, .gen .ring, .gen .core { animation: none; }
+    .gen, .gen::before, .gen::after, .gen .ring, .gen .core, .gen .frames img { animation: none; }
+    .gen .frames img:first-child { opacity: 1; }
   }
 </style>
 </head>
@@ -280,6 +292,18 @@
   var IG = "https://www.instagram.com/mikinoarchive/";
   var strip = document.getElementById("strip");
 
+  /* Stills from the reels, saved on the site so they never expire. Keyed by the post's Instagram code. */
+  var FRAMES = {
+    DdY7FHYxjmC: 4,  /* 1 piece 4 ways */
+    DdXcqQQNMu4: 4   /* which style do you like? */
+  };
+  function framesFor(post) {
+    var m = post && post.link && post.link.match(/\/(?:p|reel)\/([^\/?#]+)/);
+    var count = m && FRAMES[m[1]];
+    var out = [];
+    for (var k = 1; k <= (count || 0); k++) out.push("media/reels/" + m[1] + "-" + k + ".jpg");
+    return out;
+  }
   function rgb(v, fb) { return v ? "rgb(" + v + ")" : fb; }
   function esc(t) { return String(t).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
   /* Builds the animated thumbnail for a tile with no loadable media. */
@@ -297,7 +321,12 @@
     var core = post && post.video
       ? '<svg viewBox="0 0 10 10"><path d="M2.5 1.2v7.6L9 5z"/></svg>'
       : '<img src="media/mikino-logo.png" alt="">';
-    g.innerHTML =
+    var frames = framesFor(post);
+    var bg = frames.length ? '<div class="frames">' + frames.map(function (f, k) {
+      return '<img src="' + f + '" alt="" style="--i:' + k + '"' + (k ? ' loading="lazy"' : "") + '>';
+    }).join("") + '</div>' : "";
+    if (frames.length) g.classList.add("has-frames");
+    g.innerHTML = bg +
       '<svg class="ring" viewBox="0 0 100 100"><defs><path id="' + id + '" d="M50 50m-38 0a38 38 0 1 1 76 0a38 38 0 1 1-76 0"/></defs>' +
       '<text><textPath href="#' + id + '" textLength="236">' + esc(label) + '</textPath></text></svg>' +
       '<span class="core">' + core + '</span>' +
