@@ -103,6 +103,10 @@
   .gen.has-frames::before { opacity: .35; }
   .gen.has-frames::after { opacity: .07; }
   .gen.has-frames .ring { position: relative; }
+  /* Photo posts saved on the site: shown as the tile itself, cross-fading if there's more than one. */
+  .tile .stack img { animation: stack-fade 8s linear infinite; animation-delay: calc(var(--i) * 4s - 8s); opacity: 0; }
+  .tile .stack img:only-child { animation: none; opacity: 1; }
+  @keyframes stack-fade { 0% { opacity: 0; } 5% { opacity: 1; } 50% { opacity: 1; } 55% { opacity: 0; } 100% { opacity: 0; } }
   @keyframes gen-fade { 0% { opacity: 0; transform: scale(1.02); } 4% { opacity: 1; } 25% { opacity: 1; } 30% { opacity: 0; transform: scale(1.09); } 100% { opacity: 0; } }
 
   .bottom { display: grid; grid-template-columns: 1fr auto; gap: 20px; align-items: end; }
@@ -172,6 +176,7 @@
     .tile:hover img, .tile:hover video { transform: none; }
     .gen, .gen::before, .gen::after, .gen .ring, .gen .core, .gen .frames img { animation: none; }
     .gen .frames img:first-child { opacity: 1; }
+    .tile .stack img { animation: none; } .tile .stack img:first-child { opacity: 1; }
   }
 </style>
 </head>
@@ -296,6 +301,16 @@
     DdY7FHYxjmC: 4,  /* 1 piece 4 ways */
     DdXcqQQNMu4: 4   /* which style do you like? */
   };
+  /* Photo posts whose Instagram images expired, saved on the site. */
+  var PHOTOS = {
+    DeCn6pakVgv: 2   /* Harley-Davidson halter top */
+  };
+  function code(post) { var m = post && post.link && post.link.match(/\/(?:p|reel)\/([^\/?#]+)/); return m && m[1]; }
+  function photosFor(post) {
+    var c = code(post), out = [];
+    for (var k = 1; k <= ((c && PHOTOS[c]) || 0); k++) out.push("media/reels/" + c + "-" + k + ".jpg");
+    return out;
+  }
   function framesFor(post) {
     var m = post && post.link && post.link.match(/\/(?:p|reel)\/([^\/?#]+)/);
     var count = m && FRAMES[m[1]];
@@ -338,7 +353,21 @@
     var fig = document.createElement("figure");
     fig.className = "tile";
     fig.innerHTML = '<span class="ph fine">No. ' + n + '</span>';
-    if (post && post.src) {
+    var photos = photosFor(post);
+    if (photos.length) {
+      var st = document.createElement("div");
+      st.className = "stack";
+      photos.forEach(function (src, k) {
+        var im = document.createElement("img");
+        im.src = src; im.alt = k ? "" : (post.alt || "mikinoarchive work no. " + n);
+        im.style.setProperty("--i", k);
+        st.appendChild(im);
+      });
+      fig.appendChild(st);
+      var no0 = document.createElement("span");
+      no0.className = "no fine"; no0.textContent = n;
+      fig.appendChild(no0);
+    } else if (post && post.src) {
       var m = document.createElement(post.video ? "video" : "img");
       if (post.video) {
         m.muted = true; m.loop = true; m.autoplay = true; m.playsInline = true;
