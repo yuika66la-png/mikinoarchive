@@ -573,15 +573,22 @@ function startScene() {
     return b.a * Math.exp(-(((y - b.y) / sy) ** 2) - (dx / b.sx) ** 2);
   };
   const ease = (t) => t * t * (3 - 2 * t);
+  // How far the curves push a surface point forward (bust, tummy) or back (seat, small of the back).
+  function curveZ(x, y, z, bridged) {
+    const r = Math.hypot(x, z);
+    if (r < 1e-5) return 0;
+    const nz = z / r;
+    return nz > 0
+      ? (bump(BUST, x, y, bridged) + bump(CHEST, x, y, false) + bump(BELLY, x, y, false)) * ease(nz)
+      : -(bump(SEAT, x, y, bridged) + bump(LUMBAR, x, y, false)) * ease(-nz);
+  }
   function curve(geo, bridged) {
     const pos = geo.attributes.position;
     for (let i = 0; i < pos.count; i++) {
       const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
       const r = Math.hypot(x, z);
       if (r < 1e-5) continue;
-      const nz = z / r;
-      const d = nz > 0 ? (bump(BUST, x, y, bridged) + bump(CHEST, x, y, false) + bump(BELLY, x, y, false)) * ease(nz) : (bump(SEAT, x, y, bridged) + bump(LUMBAR, x, y, false)) * ease(-nz);
-      pos.setZ(i, z + Math.sign(z) * d);
+      pos.setZ(i, z + curveZ(x, y, z, bridged));
     }
     geo.computeVertexNormals();
     return geo;
@@ -859,13 +866,42 @@ function startScene() {
         put(new THREE.SphereGeometry(0.042 + off, 24, 16, 0, Math.PI * 2, 0, Math.PI / 2 + 0.3), m, arms[side], (s) => { s.scale.z = 0.92; });
       }
     };
+    // Shoulder straps that lie on the body: traced up the front of the garment, over the top of the
+    // shoulder and down the back, at a fixed distance from the centre line.
+    const STRAP_X = 0.083;
+    function surfaceAt(x, y, off, back) {
+      const rAt = (phi) => bodyR(phi, y, false) + off;
+      const g = (phi) => rAt(phi) * Math.sin(phi) - x;
+      const N = 48;
+      let prev = back ? Math.PI : 0, gp = g(prev);
+      for (let i = 1; i <= N; i++) {
+        const phi = back ? Math.PI - (Math.PI / 2) * i / N : (Math.PI / 2) * i / N, gv = g(phi);
+        if (gp < 0 && gv >= 0) {
+          let lo = prev, hi = phi;
+          for (let k = 0; k < 18; k++) { const mid = (lo + hi) / 2; if (g(mid) < 0) lo = mid; else hi = mid; }
+          const r = rAt(hi), z = r * Math.cos(hi);
+          return new THREE.Vector3(x, y, z + curveZ(x, y, z, true));
+        }
+        prev = phi; gp = gv;
+      }
+      return null;
+    }
     const straps = (y, off, m) => {
+      const lift = off + 0.009;
+      const front = [], backPts = [];
+      for (let yy = y - 0.015; yy < 1.6; yy += 0.004) {
+        const f = surfaceAt(STRAP_X, yy, lift, false), b = surfaceAt(STRAP_X, yy, lift, true);
+        if (!f || !b || f.z - b.z < 0.012) break;   // reached the top of the shoulder
+        front.push(f);
+        backPts.unshift(b);
+      }
+      if (front.length < 3) return;
+      const top = front[front.length - 1], topB = backPts[0];
+      const apex = new THREE.Vector3(STRAP_X, top.y + 0.006, (top.z + topB.z) / 2);
+      const path = [...front, apex, ...backPts];
       for (const side of [-1, 1]) {
-        put(new THREE.TorusGeometry(torsoR(y) * ZS + off + 0.008, 0.007, 6, 24, Math.PI), m, form, (s) => {
-          s.position.set(side * 0.07, y - 0.005, 0);
-          s.rotation.y = Math.PI / 2;
-          s.scale.y = 0.55;
-        });
+        const pts = path.map((p) => new THREE.Vector3(side * p.x, p.y, p.z));
+        put(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 64, 0.0055, 8, false), m, form, (s) => { s.scale.x = 1; });
       }
     };
     const collar = (y, off, m) => {
