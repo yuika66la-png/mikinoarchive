@@ -67,11 +67,12 @@ def js_number(name):
 # ---------- shape numbers from the page ----------
 ZS = js_number('ZS')
 CROTCH = js_number('CROTCH')
-LEG_X, LEG_TOP, LEG_TILT = js_number('LEG_X'), js_number('LEG_TOP'), js_number('LEG_TILT')
+LEG_X, LEG_TOP = js_number('LEG_X'), js_number('LEG_TOP')
 ARM_ANGLE = js_number('ARM_ANGLE')
 m = re.search(r'SHOULDER = new THREE\.Vector3\(([-\d.]+), ([-\d.]+), ([-\d.]+)\)', html)
 SHOULDER = tuple(float(v) for v in m.groups())
 BUST, CHEST, LUMBAR, SEAT, BELLY = (js_value(n) for n in ('BUST', 'CHEST', 'LUMBAR', 'SEAT', 'BELLY'))
+LEG_ROT = js_value('LEG_ROT')   # {right: [rx, rz], left: [rx, rz]}
 
 
 def catmull(t, p0, p1, p2, p3):
@@ -131,7 +132,7 @@ def SH(y):
 
 
 def depth_at(y):
-    return ZS + (1 - ZS) * ramp(y, 1.46, 1.53) + 0.12 * ramp(y, 1.56, 1.64)
+    return ZS * (1 - 0.28 * (1 - ramp(y, 0.84, 1.0))) + (1 - ZS) * ramp(y, 1.46, 1.53) + 0.12 * ramp(y, 1.56, 1.64)
 
 
 def head_fwd(y):
@@ -203,20 +204,34 @@ def torso(x, y, z):
     return np.maximum(smax(d, CROTCH - y, 0.045), y - 1.813)   # the crotch rounds into an arch, not a flat edge
 
 
+def ellipsoid(px, py, pz, rx, ry, rz):
+    k0 = np.sqrt((px / rx) ** 2 + (py / ry) ** 2 + (pz / rz) ** 2)
+    k1 = np.sqrt((px / rx ** 2) ** 2 + (py / ry ** 2) ** 2 + (pz / rz ** 2) ** 2) + 1e-12
+    return k0 * (k0 - 1) / k1
+
+
 def leg(x, y, z, side):
-    lx, ly = rot_z(x - side * LEG_X, y - LEG_TOP, side * LEG_TILT)
+    # into the leg's own frame: the leg group is rotated X then Z (Euler XYZ) about the hip,
+    # so undo the X rotation first, then the Z rotation
+    rxa, rza = LEG_ROT['right'] if side > 0 else LEG_ROT['left']
+    px, py, pz = x - side * LEG_X, y - LEG_TOP, z
+    c, s = np.cos(-rxa), np.sin(-rxa)
+    py, pz = py * c - pz * s, py * s + pz * c
+    lx, ly = rot_z(px, py, -rza)
     ly = ly + LEG_TOP
-    rho = np.hypot(lx, z) + 1e-9
-    sx, cz = lx / rho, z / rho
+    lz = pz
+    rho = np.hypot(lx, lz) + 1e-9
+    sx, cz = lx / rho, lz / rho
     R = np.where(ly >= 0.05, legR(ly), 0)
-    r = ray_out(sx, cz, 0.0, 0.0, R, R * 0.92)
-    k = 1 - ((ly - 0.055) / 0.023) ** 2
-    kk = np.sqrt(np.maximum(k, 0))
-    foot = ray_out(sx, cz, 0.0, 0.032, 0.029 * kk, 0.07 * kk)
-    r = np.where(k > 0, smax(r, foot, 0.04), r)
     # above the hip joint the leg fades away smoothly (its surface sinks inward), so it never ends with an edge
-    d = rho - r + 0.9 * np.maximum(ly - 0.94, 0) ** 1.6
-    return np.maximum(d, 0.032 - ly)
+    d = rho - ray_out(sx, cz, 0.0, 0.0, R, R * 0.92) + 0.9 * np.maximum(ly - 0.94, 0) ** 1.6
+    d = np.maximum(d, 0.04 - ly)
+    # arched shop-mannequin foot: heel lifted, toes pointing down to the base
+    a = 0.38
+    fy, fz = ly - 0.07, lz - 0.038
+    qy, qz = fy * np.cos(a) - fz * np.sin(a), fy * np.sin(a) + fz * np.cos(a)
+    foot = ellipsoid(lx, qy, qz, 0.027, 0.021, 0.06)
+    return smin(d, foot, 0.018)
 
 
 # Thickness (front-to-back of the hand) and width of the forearm-wrist-palm, as smooth curves down the arm.
@@ -265,7 +280,7 @@ def body(x, y, z):
     t = torso(x, y, z)
     # thighs round into each other only right at the crotch, so there's no sharp notch but still a gap below
     legs = smin(leg(x, y, z, 1), leg(x, y, z, -1), 0.001 + 0.014 * ramp(y, 0.8, 0.87))   # just a soft crotch, the thighs stay apart
-    d = smin(t, legs, 0.05)
+    d = smin(t, legs, 0.03 + 0.05 * ramp(y, 0.86, 0.97))   # wide, soft blend at the hips; tight at the crotch so it stays an arch
     arms = np.minimum(arm(x, y, z, 1), arm(x, y, z, -1))
     # a wide, soft join at the shoulder, narrowing below the armpit so the arm doesn't web to the side
     k = 0.012 + 0.038 * ramp(y, 1.3, 1.41)
