@@ -110,5 +110,4 @@ window.BINDER_ITEMS = [{"n":2,"img":["002.jpg"],"cat":"bags","brand":"Coach","co
 {"n":114,"img":["114.jpg"],"cat":"shirts","brand":"Ralph Lauren","color":"Purple","price":"$35"},
 {"n":115,"img":["115.jpg"],"cat":"jackets","price":"$55"},
 {"n":116,"img":["116.jpg"],"cat":"shirts","origin":"Korea","price":"$45"},
-{"n":117,"img":["117.jpg"],"cat":"tees","brand":"Hardrock","name":"Hardrock t-shirt","color":"BLK","price":"$25"},
 {"n":118,"img":["118.jpg"],"cat":"jackets","brand":"Barshka","color":"White","price":"$55"}];
