@@ -594,10 +594,15 @@ function startScene() {
   const LUMBAR = { y: 1.13, sy: 0.075, x: 0, sx: 0.1, a: -0.008 };    // the small of the back
   const SEAT = { y: 0.96, sy: 0.09, x: 0.055, sx: 0.085, a: 0.012 };
   const BELLY = { y: 1.02, sy: 0.11, x: 0, sx: 0.12, a: -0.042 };   // flattens the tummy
+  // Each curve is a soft mound at x = ±b.x. The two sides are added (not mirrored with |x|), so there's
+  // no crease down the centre line. Bridged (for clothes) keeps it flat between the two sides.
   const bump = (b, x, y, bridged) => {
-    const dx = bridged ? Math.max(0, Math.abs(x) - b.x) : Math.abs(x) - b.x;
     const sy = y > b.y && b.syUp ? b.syUp : b.sy;
-    return b.a * Math.exp(-(((y - b.y) / sy) ** 2) - (dx / b.sx) ** 2);
+    const vy = Math.exp(-(((y - b.y) / sy) ** 2));
+    if (bridged) { const dx = Math.max(0, Math.abs(x) - b.x); return b.a * vy * Math.exp(-((dx / b.sx) ** 2)); }
+    if (!b.x) return b.a * vy * Math.exp(-((x / b.sx) ** 2));
+    const g = (c) => Math.exp(-(((x - c) / b.sx) ** 2));
+    return b.a * vy * Math.max(g(b.x) + g(-b.x), 0) / (1 + Math.exp(-((2 * b.x / b.sx) ** 2)));
   };
   const ease = (t) => t * t * (3 - 2 * t);
   // How far the curves push a surface point forward (bust, tummy) or back (seat, small of the back).
@@ -743,10 +748,10 @@ function startScene() {
     return geo;
   }
 
-  const ARM_ANGLE = 0.12, SHOULDER = new THREE.Vector3(0.155, 1.43, 0);
+  const ARM_ANGLE = 0.12, SHOULDER = new THREE.Vector3(0.148, 1.43, 0);
   // Arm profile along its own downward axis (y = minus the distance from the shoulder).
   const armPts = smooth([[0, -.645], [.015, -.64], [.0185, -.615], [.019, -.6], [.029, -.46], [.025, -.33], [.034, -.2],
-    [.038, -.07], [.034, 0], [0, .028]], 120);
+    [.038, -.07], [.04, -.02], [.035, .014], [0, .036]], 120);
   const armR = lookup(armPts);
 
   const bodyMat = new THREE.MeshStandardMaterial({ color: 0xe8d6bb, roughness: .5 });
@@ -759,7 +764,29 @@ function startScene() {
     parent.add(m);
     return m;
   };
-  add(finish(curve(loft(0.78, 1.813, bodyR, 0, 112))), bodyMat);
+  // The dress form itself is ONE seamless surface (head to toe, hands included) with smooth normals,
+  // prebuilt by tools/build_mannequin.py from the shape numbers above. Rerun that after changing them.
+  const MANNEQUIN_V = '1';
+  fetch('binder/mannequin.bin?v=' + MANNEQUIN_V).then((r) => r.arrayBuffer()).then((buf) => {
+    const dv = new DataView(buf);
+    const nv = dv.getUint32(4, true), ni = dv.getUint32(8, true), isz = dv.getUint32(12, true);
+    const mn = [0, 1, 2].map((i) => dv.getFloat32(16 + 4 * i, true)), mx = [0, 1, 2].map((i) => dv.getFloat32(28 + 4 * i, true));
+    let o = 40;
+    const q = new Int16Array(buf, o, nv * 3); o += nv * 6;
+    const nrm = new Int8Array(buf, o, nv * 3); o += nv * 3; o += (4 - (o % 4)) % 4;
+    const idx = isz === 2 ? new Uint16Array(buf, o, ni) : new Uint32Array(buf, o, ni);
+    const pos = new Float32Array(nv * 3);
+    for (let i = 0; i < nv * 3; i++) { const a = i % 3; pos[i] = mn[a] + (q[i] + 32768) / 65535 * (mx[a] - mn[a]); }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    geo.setAttribute('normal', new THREE.BufferAttribute(nrm, 3, true));
+    geo.setIndex(new THREE.BufferAttribute(idx, 1));
+    const bodyMesh = new THREE.Mesh(geo, bodyMat);
+    bodyMesh.castShadow = true;      // still casts its shadow on the floor
+    bodyMesh.receiveShadow = false;  // but no shadow lines on itself
+    form.add(bodyMesh);
+    needsRender = true;
+  }).catch(() => {});
   const legs = {};
   for (const side of [-1, 1]) {
     // Each leg hangs from the hip and leans in a little, so the feet sit close together.
@@ -767,40 +794,14 @@ function startScene() {
     g.position.set(side * LEG_X, LEG_TOP, 0);
     g.rotation.z = -side * LEG_TILT;
     form.add(g);
-    const leg = add(finish(loft(0.032, 0.965, legFootR, 0, 48)), bodyMat, g);
-    leg.position.y = -LEG_TOP;
     legs[side] = g;
   }
-  // The arm is drawn a hair behind the body surface, so where the shoulder surface and the arm coincide
-  // the shoulder wins cleanly and the hand-over to the arm below is gradual, with no line.
-  const armMat = bodyMat.clone();
-  armMat.polygonOffset = true;
-  armMat.polygonOffsetFactor = 1;
-  armMat.polygonOffsetUnits = 4;
   const arms = {};
   for (const side of [-1, 1]) {
     const g = new THREE.Group();
     g.position.set(side * SHOULDER.x, SHOULDER.y, 0);
     g.rotation.z = side * ARM_ANGLE;
     form.add(g);
-    add(new THREE.LatheGeometry(armPts, 40), armMat, g);
-    add(new THREE.SphereGeometry(0.042, 32, 20), armMat, g);
-    // Hand: a flat palm facing the thigh, four fingers of different lengths curling in a little, and a thumb in front.
-    const palm = add(new THREE.CapsuleGeometry(0.021, 0.045, 6, 18), bodyMat, g);
-    palm.position.y = -0.64;
-    palm.scale.set(0.46, 1, 1.05);
-    [[0.0145, 0.03], [0.005, 0.037], [-0.0045, 0.034], [-0.0135, 0.027]].forEach(([z, len]) => {
-      const fr = 0.0068;
-      const finger = add(new THREE.CapsuleGeometry(fr, len, 4, 10), bodyMat, g);
-      finger.geometry.translate(0, -(len / 2 + fr), 0);     // pivot at the knuckle
-      finger.position.set(0, -0.662, z);
-      finger.rotation.z = -side * 0.16;
-      finger.scale.x = 0.9;
-    });
-    const thumb = add(new THREE.CapsuleGeometry(0.0075, 0.024, 4, 10), bodyMat, g);
-    thumb.geometry.translate(0, -0.021, 0);
-    thumb.position.set(-side * 0.004, -0.62, 0.014);
-    thumb.rotation.set(-0.35, 0, -side * 0.18);
     arms[side] = g;
   }
   const base = add(new THREE.CylinderGeometry(0.3, 0.32, 0.035, 64), woodMat);
