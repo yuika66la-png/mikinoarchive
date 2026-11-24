@@ -589,7 +589,7 @@ function startScene() {
   // Clothes get the same shape, but bridged between the two sides so tops don't dip in at the centre.
   // Broad, soft shapes: wide falloff and a gentle fade toward the sides keep them smooth, not pointed.
   // The bust rises in a long, gentle slope from the upper chest and rounds off quickly underneath.
-  const BUST = { y: 1.285, sy: 0.05, syUp: 0.09, x: 0.073, sx: 0.06, a: 0.04 };
+  const BUST = { y: 1.285, sy: 0.056, syUp: 0.095, x: 0.073, sx: 0.066, a: 0.042 };
   const CHEST = { y: 1.405, sy: 0.045, x: 0, sx: 0.11, a: -0.006 };   // keeps the upper chest flat
   const LUMBAR = { y: 1.13, sy: 0.075, x: 0, sx: 0.1, a: -0.008 };    // the small of the back
   const SEAT = { y: 0.96, sy: 0.09, x: 0.055, sx: 0.085, a: 0.012 };
@@ -601,13 +601,16 @@ function startScene() {
   };
   const ease = (t) => t * t * (3 - 2 * t);
   // How far the curves push a surface point forward (bust, tummy) or back (seat, small of the back).
-  function curveZ(x, y, z, bridged) {
+  // How far the curves push a surface point outward (bust, seat) or inward (tummy, small of the back).
+  // The push is along the surface (outward from the centre line), not straight forward, so the bust
+  // rounds off evenly on all sides instead of coming to a point.
+  function curveOut(x, y, z, bridged) {
     const r = Math.hypot(x, z);
     if (r < 1e-5) return 0;
     const nz = z / r;
     return nz > 0
       ? (bump(BUST, x, y, bridged) + bump(CHEST, x, y, false) + bump(BELLY, x, y, false)) * ease(nz)
-      : -(bump(SEAT, x, y, bridged) + bump(LUMBAR, x, y, false)) * ease(-nz);
+      : (bump(SEAT, x, y, bridged) + bump(LUMBAR, x, y, false)) * ease(-nz);
   }
   function curve(geo, bridged) {
     const pos = geo.attributes.position;
@@ -615,7 +618,9 @@ function startScene() {
       const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
       const r = Math.hypot(x, z);
       if (r < 1e-5) continue;
-      pos.setZ(i, z + curveZ(x, y, z, bridged));
+      const k = 1 + curveOut(x, y, z, bridged) / r;
+      pos.setX(i, x * k);
+      pos.setZ(i, z * k);
     }
     geo.computeVertexNormals();
     return geo;
@@ -658,7 +663,7 @@ function startScene() {
     const d = (SHOULDER.y - y) / Math.cos(ARM_ANGLE);
     const cx = side * (SHOULDER.x + d * Math.sin(ARM_ANGLE));
     const cap = Math.sqrt(Math.max(0, 0.042 ** 2 - (y - SHOULDER.y) ** 2));
-    const R = (Math.max(armR(-d), cap) + 0.006 * ramp(y, 1.36, 1.4)) * (0.5 + 0.5 * ramp(y, ARM_CUT, 1.41));   // covers the arm's top, tucks inside it below the armpit
+    const R = Math.max(armR(-d), cap) * (0.5 + 0.5 * ramp(y, ARM_CUT, 1.41));   // tucks inside the arm below the armpit
     return rayHit(sx, cz, cx, 0, R, R);
   }
   // Smooth maximum that only rounds where the two are within BLEND of each other, and is exact elsewhere,
@@ -766,15 +771,20 @@ function startScene() {
     leg.position.y = -LEG_TOP;
     legs[side] = g;
   }
+  // The arm is drawn a hair behind the body surface, so where the shoulder surface and the arm coincide
+  // the shoulder wins cleanly and the hand-over to the arm below is gradual, with no line.
+  const armMat = bodyMat.clone();
+  armMat.polygonOffset = true;
+  armMat.polygonOffsetFactor = 1;
+  armMat.polygonOffsetUnits = 4;
   const arms = {};
   for (const side of [-1, 1]) {
     const g = new THREE.Group();
     g.position.set(side * SHOULDER.x, SHOULDER.y, 0);
     g.rotation.z = side * ARM_ANGLE;
     form.add(g);
-    add(new THREE.LatheGeometry(armPts, 28), bodyMat, g);
-    const cap = add(new THREE.SphereGeometry(0.037, 24, 16), bodyMat, g);
-    cap.scale.set(1, 1, .9);
+    add(new THREE.LatheGeometry(armPts, 40), armMat, g);
+    add(new THREE.SphereGeometry(0.042, 32, 20), armMat, g);
     // Hand: a flat palm facing the thigh, four fingers of different lengths curling in a little, and a thumb in front.
     const palm = add(new THREE.CapsuleGeometry(0.021, 0.045, 6, 18), bodyMat, g);
     palm.position.y = -0.64;
@@ -929,8 +939,8 @@ function startScene() {
         if (gp < 0 && gv >= 0) {
           let lo = prev, hi = phi;
           for (let k = 0; k < 18; k++) { const mid = (lo + hi) / 2; if (g(mid) < 0) lo = mid; else hi = mid; }
-          const r = rAt(hi), z = r * Math.cos(hi);
-          return new THREE.Vector3(x, y, z + curveZ(x, y, z, true));
+          const r = rAt(hi), r2 = r + curveOut(r * Math.sin(hi), y, r * Math.cos(hi), true);
+          return new THREE.Vector3(r2 * Math.sin(hi), y, r2 * Math.cos(hi));
         }
         prev = phi; gp = gv;
       }
