@@ -589,7 +589,7 @@ function startScene() {
   // Clothes get the same shape, but bridged between the two sides so tops don't dip in at the centre.
   // Broad, soft shapes: wide falloff and a gentle fade toward the sides keep them smooth, not pointed.
   // The bust rises in a long, gentle slope from the upper chest and rounds off quickly underneath.
-  const BUST = { y: 1.285, sy: 0.05, syUp: 0.09, x: 0.063, sx: 0.07, a: 0.04 };
+  const BUST = { y: 1.285, sy: 0.05, syUp: 0.09, x: 0.073, sx: 0.06, a: 0.04 };
   const CHEST = { y: 1.405, sy: 0.045, x: 0, sx: 0.11, a: -0.006 };   // keeps the upper chest flat
   const LUMBAR = { y: 1.13, sy: 0.075, x: 0, sx: 0.1, a: -0.008 };    // the small of the back
   const SEAT = { y: 0.96, sy: 0.09, x: 0.055, sx: 0.085, a: 0.012 };
@@ -621,10 +621,10 @@ function startScene() {
     return geo;
   }
   const torsoR = lookup(torsoPts);
-  const LEG_X = 0.072, LEG_TOP = 0.96, LEG_TILT = 0.028;
+  const LEG_X = 0.072, LEG_TOP = 0.96, LEG_TILT = 0.02;
   // Slim ankle, a curve of calf, a narrow knee, then a fuller thigh.
-  const legPts = smooth([[0, .05], [.024, .058], [.024, .1], [.033, .19], [.049, .3], [.044, .38], [.037, .46], [.04, .51],
-    [.049, .58], [.062, .7], [.072, .82], [.077, .9], [.077, .965]], 140);
+  const legPts = smooth([[0, .05], [.022, .058], [.022, .1], [.03, .19], [.044, .3], [.04, .38], [.034, .46], [.036, .51],
+    [.044, .58], [.055, .7], [.063, .82], [.067, .9], [.067, .965]], 140);
   const legR = lookup(legPts);
   /* One continuous surface for the torso, shoulders and tops of the thighs.
      At each height the cross-section is the torso (an oval, widened at the shoulders) blended smoothly
@@ -658,7 +658,7 @@ function startScene() {
     const d = (SHOULDER.y - y) / Math.cos(ARM_ANGLE);
     const cx = side * (SHOULDER.x + d * Math.sin(ARM_ANGLE));
     const cap = Math.sqrt(Math.max(0, 0.042 ** 2 - (y - SHOULDER.y) ** 2));
-    const R = Math.max(armR(-d), cap) * (0.5 + 0.5 * ramp(y, ARM_CUT, 1.41));   // tucks inside the arm below the armpit
+    const R = (Math.max(armR(-d), cap) + 0.006 * ramp(y, 1.36, 1.4)) * (0.5 + 0.5 * ramp(y, ARM_CUT, 1.41));   // covers the arm's top, tucks inside it below the armpit
     return rayHit(sx, cz, cx, 0, R, R);
   }
   // Smooth maximum that only rounds where the two are within BLEND of each other, and is exact elsewhere,
@@ -741,7 +741,7 @@ function startScene() {
   const ARM_ANGLE = 0.12, SHOULDER = new THREE.Vector3(0.155, 1.43, 0);
   // Arm profile along its own downward axis (y = minus the distance from the shoulder).
   const armPts = smooth([[0, -.645], [.015, -.64], [.0185, -.615], [.019, -.6], [.029, -.46], [.025, -.33], [.034, -.2],
-    [.039, -.07], [.037, 0], [0, .03]], 120);
+    [.038, -.07], [.034, 0], [0, .028]], 120);
   const armR = lookup(armPts);
 
   const bodyMat = new THREE.MeshStandardMaterial({ color: 0xe8d6bb, roughness: .5 });
@@ -773,7 +773,7 @@ function startScene() {
     g.rotation.z = side * ARM_ANGLE;
     form.add(g);
     add(new THREE.LatheGeometry(armPts, 28), bodyMat, g);
-    const cap = add(new THREE.SphereGeometry(0.042, 24, 16), bodyMat, g);
+    const cap = add(new THREE.SphereGeometry(0.037, 24, 16), bodyMat, g);
     cap.scale.set(1, 1, .9);
     // Hand: a flat palm facing the thigh, four fingers of different lengths curling in a little, and a thumb in front.
     const palm = add(new THREE.CapsuleGeometry(0.021, 0.045, 6, 18), bodyMat, g);
