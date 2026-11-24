@@ -69,6 +69,7 @@ ZS = js_number('ZS')
 CROTCH = js_number('CROTCH')
 LEG_X, LEG_TOP = js_number('LEG_X'), js_number('LEG_TOP')
 ARM_ANGLE = js_number('ARM_ANGLE')
+ARM_LEN = js_number('ARM_LEN')
 m = re.search(r'SHOULDER = new THREE\.Vector3\(([-\d.]+), ([-\d.]+), ([-\d.]+)\)', html)
 SHOULDER = tuple(float(v) for v in m.groups())
 BUST, CHEST, LUMBAR, SEAT, BELLY = (js_value(n) for n in ('BUST', 'CHEST', 'LUMBAR', 'SEAT', 'BELLY'))
@@ -128,11 +129,11 @@ def ramp(y, a, b):
 
 
 def SH(y):
-    return 0.05 * np.exp(-(((y - 1.425) / 0.045) ** 2))
+    return 0.032 * np.exp(-(((y - 1.42) / 0.065) ** 2))
 
 
 def depth_at(y):
-    return ZS * (1 - 0.28 * (1 - ramp(y, 0.84, 1.0))) + (1 - ZS) * ramp(y, 1.46, 1.53) + 0.12 * ramp(y, 1.56, 1.64)
+    return ZS * (1 - 0.28 * (1 - ramp(y, 0.89, 1.05))) + (1 - ZS) * ramp(y, 1.46, 1.53) + 0.12 * ramp(y, 1.56, 1.64)
 
 
 def head_fwd(y):
@@ -201,7 +202,7 @@ def torso(x, y, z):
     # navel: a small soft dimple on the front, a little below the waist
     front = ease(np.clip(z / rho, 0, 1)) ** 4
     d = d + 0.0045 * np.exp(-((x / 0.0055) ** 2 + ((y - NAVEL_Y) / 0.0075) ** 2)) * front
-    return np.maximum(smax(d, CROTCH - y, 0.045), y - 1.813)   # the crotch rounds into an arch, not a flat edge
+    return np.maximum(smax(d, CROTCH - y, 0.045), y - 1.797)   # the crotch rounds into an arch, not a flat edge
 
 
 def ellipsoid(px, py, pz, rx, ry, rz):
@@ -224,7 +225,7 @@ def leg(x, y, z, side):
     sx, cz = lx / rho, lz / rho
     R = np.where(ly >= 0.05, legR(ly), 0)
     # above the hip joint the leg fades away smoothly (its surface sinks inward), so it never ends with an edge
-    d = rho - ray_out(sx, cz, 0.0, 0.0, R, R * 0.92) + 0.9 * np.maximum(ly - 0.94, 0) ** 1.6
+    d = rho - ray_out(sx, cz, 0.0, 0.0, R, R * 0.92) + 0.9 * np.maximum(ly - 0.99, 0) ** 1.6
     d = np.maximum(d, 0.04 - ly)
     # arched shop-mannequin foot: heel lifted, toes pointing down to the base
     a = 0.38
@@ -237,16 +238,17 @@ def leg(x, y, z, side):
 # Thickness (front-to-back of the hand) and width of the forearm-wrist-palm, as smooth curves down the arm.
 _tt = [0.40, 0.46, 0.52, 0.60, 0.625, 0.66, 0.684, 0.70]
 _r40, _r46 = float(armR(-0.40)), float(armR(-0.46))
-HAND_RX = lookup(smooth([[v, t] for v, t in zip([_r40, _r46, 0.0245, 0.0165, 0.0115, 0.0105, 0.009, 0.004], _tt)], 200))
-HAND_RZ = lookup(smooth([[v, t] for v, t in zip([_r40, _r46, 0.026, 0.0205, 0.0215, 0.0225, 0.0205, 0.008], _tt)], 200))
+HAND_RX = lookup(smooth([[v, t] for v, t in zip([_r40, _r46, 0.0185, 0.0135, 0.0098, 0.0092, 0.008, 0.0035], _tt)], 200))
+HAND_RZ = lookup(smooth([[v, t] for v, t in zip([_r40, _r46, 0.0195, 0.0168, 0.0188, 0.0198, 0.018, 0.007], _tt)], 200))
 
-NAVEL_Y = 1.122
+NAVEL_Y = 1.143
 
 FINGERS = [(0.0145, 0.03), (0.005, 0.037), (-0.0045, 0.034), (-0.0135, 0.027)]
 
 
 def arm(x, y, z, side):
     ax, ay = rot_z(x - side * SHOULDER[0], y - SHOULDER[1], -side * ARM_ANGLE)
+    ay = ay / ARM_LEN
     az = z
     # arm, wrist and palm as one shape: an oval cross-section that is round down the arm, then narrows at the
     # wrist and flattens into the palm (thin front-to-back of the hand, wide across it)
@@ -257,10 +259,10 @@ def arm(x, y, z, side):
     rmin = np.maximum(np.minimum(rx, rz), 1e-4)
     q = np.sqrt((ax / np.maximum(rx, 1e-4)) ** 2 + (az / np.maximum(rz, 1e-4)) ** 2)
     d = np.maximum((q - 1) * rmin, np.maximum(ay, t - 0.70))
-    d = smin(d, np.sqrt(ax * ax + (ay + 0.004) ** 2 + az * az) - 0.038, 0.012)   # round top of the arm (deltoid), blended in
+    d = smin(d, np.sqrt(ax * ax + (ay + 0.004) ** 2 + az * az) - 0.029, 0.01)   # round top of the arm (deltoid), blended in
     palm = d
     hand = palm
-    fr = 0.0068
+    fr = 0.0058
     for fz, ln in FINGERS:
         fx, fy = rot_z(ax, ay + 0.662, side * 0.16)                         # undo the finger's curl
         f = capsule(fx / 0.9, fy, az - fz, -fr, -(ln + fr), fr) * 0.9
@@ -279,8 +281,8 @@ def arm(x, y, z, side):
 def body(x, y, z):
     t = torso(x, y, z)
     # thighs round into each other only right at the crotch, so there's no sharp notch but still a gap below
-    legs = smin(leg(x, y, z, 1), leg(x, y, z, -1), 0.001 + 0.014 * ramp(y, 0.8, 0.87))   # just a soft crotch, the thighs stay apart
-    d = smin(t, legs, 0.03 + 0.05 * ramp(y, 0.86, 0.97))   # wide, soft blend at the hips; tight at the crotch so it stays an arch
+    legs = smin(leg(x, y, z, 1), leg(x, y, z, -1), 0.001 + 0.012 * ramp(y, 0.85, 0.92))   # just a soft crotch, the thighs stay apart
+    d = smin(t, legs, 0.025 + 0.045 * ramp(y, 0.91, 1.02))   # wide, soft blend at the hips; tight at the crotch so it stays an arch
     arms = np.minimum(arm(x, y, z, 1), arm(x, y, z, -1))
     # a wide, soft join at the shoulder, narrowing below the armpit so the arm doesn't web to the side
     k = 0.012 + 0.038 * ramp(y, 1.3, 1.41)
