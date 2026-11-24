@@ -193,8 +193,8 @@
   <div class="bot fine"><span id="lbCap"></span><a href="binder.html">Find it in the binder</a></div>
 </div>
 
-<script src="binder/items.js"></script>
-<script src="binder/categories.js"></script>
+<script>document.write('<script src="binder/items.js?t=' + Math.floor(Date.now() / 60000) + '"><\/script>')</script>
+<script>document.write('<script src="binder/categories.js?t=' + Math.floor(Date.now() / 60000) + '"><\/script>')</script>
 <script>
 (function () {
   /* Optional: your own lookbook shoot, e.g. ["media/lookbook/01.jpg", "media/lookbook/02.jpg"].
@@ -208,7 +208,7 @@
     ? LOOKS.map(function (src, i) { return { src: src, thumb: src, no: i + 1, label: '' }; })
     : (window.BINDER_ITEMS || []).filter(function (it) { return it.img && it.img[0]; }).map(function (it) {
         return {
-          src: 'binder/cards/' + it.img[0], thumb: 'binder/thumbs/' + it.img[0], no: it.n,
+          src: 'binder/cards/' + it.img[0] + (it.v ? '?v=' + it.v : ''), thumb: 'binder/thumbs/' + it.img[0] + (it.v ? '?v=' + it.v : ''), no: it.n,
           label: [it.brand, it.type || cats[it.cat]].filter(Boolean).join(' · '), price: it.price || ''
         };
       });

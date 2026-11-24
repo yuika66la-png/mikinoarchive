@@ -273,12 +273,12 @@
   <a href="#top">Back to top ↑</a>
 </footer>
 
-<script src="binder/items.js"></script>
+<script>document.write('<script src="binder/items.js?t=' + Math.floor(Date.now() / 60000) + '"><\/script>')</script>
 <script>
 (function () {
   var reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   var items = (window.BINDER_ITEMS || []).filter(function (it) { return it.img && it.img[0]; });
-  var thumbs = items.map(function (it) { return 'binder/thumbs/' + it.img[0]; });
+  var thumbs = items.map(function (it) { return 'binder/thumbs/' + it.img[0] + (it.v ? '?v=' + it.v : ''); });
   document.getElementById('yr').textContent = new Date().getFullYear();
 
   /* --- name: split into letters, fit to width, hover swaps the font --- */
@@ -401,7 +401,7 @@
   var strip = document.getElementById('strip');
   items.slice().sort(function () { return Math.random() - 0.5; }).slice(0, 5).forEach(function (it) {
     var a = document.createElement('a'); a.href = 'lookbook.html';
-    a.innerHTML = '<img loading="lazy" alt="" src="binder/cards/' + it.img[0] + '">';
+    a.innerHTML = '<img loading="lazy" alt="" src="binder/cards/' + it.img[0] + (it.v ? '?v=' + it.v : '') + '">';
     strip.appendChild(a);
   });
   var stripImgs = [].slice.call(strip.querySelectorAll('img'));

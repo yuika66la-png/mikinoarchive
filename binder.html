@@ -290,8 +290,8 @@
 
 <noscript><p style="padding:24px;text-align:center"><a href="binder-classic.html" style="color:#d8b06a">Open the classic binder</a></p></noscript>
 
-<script src="binder/items.js"></script>
-<script src="binder/categories.js"></script>
+<script>document.write('<script src="binder/items.js?t=' + Math.floor(Date.now() / 60000) + '"><\/script>')</script>
+<script>document.write('<script src="binder/categories.js?t=' + Math.floor(Date.now() / 60000) + '"><\/script>')</script>
 <script type="module">
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';

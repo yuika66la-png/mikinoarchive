@@ -487,8 +487,8 @@
   </div>
 </dialog>
 
-<script src="binder/items.js"></script>
-<script src="binder/categories.js"></script>
+<script>document.write('<script src="binder/items.js?t=' + Math.floor(Date.now() / 60000) + '"><\/script>')</script>
+<script>document.write('<script src="binder/categories.js?t=' + Math.floor(Date.now() / 60000) + '"><\/script>')</script>
 <script>
 (function () {
   var allItems = window.BINDER_ITEMS || [];
