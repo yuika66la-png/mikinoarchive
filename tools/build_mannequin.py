@@ -197,7 +197,10 @@ def torso(x, y, z):
     t = torsoR(y)
     R = np.where(y > CROTCH, ray_out(sx, cz, 0.0, head_fwd(y), t + SH(y), t * depth_at(y)), 0)
     d = rho - R - curve_out(x, y, z)
-    return np.maximum(smax(d, CROTCH - y, 0.02), y - 1.813)
+    # navel: a small soft dimple on the front, a little below the waist
+    front = ease(np.clip(z / rho, 0, 1)) ** 4
+    d = d + 0.0045 * np.exp(-((x / 0.0055) ** 2 + ((y - NAVEL_Y) / 0.0075) ** 2)) * front
+    return np.maximum(smax(d, CROTCH - y, 0.045), y - 1.813)   # the crotch rounds into an arch, not a flat edge
 
 
 def leg(x, y, z, side):
@@ -212,7 +215,7 @@ def leg(x, y, z, side):
     foot = ray_out(sx, cz, 0.0, 0.032, 0.029 * kk, 0.07 * kk)
     r = np.where(k > 0, smax(r, foot, 0.04), r)
     # above the hip joint the leg fades away smoothly (its surface sinks inward), so it never ends with an edge
-    d = rho - r + 0.9 * np.maximum(ly - 0.9, 0) ** 1.6
+    d = rho - r + 0.9 * np.maximum(ly - 0.94, 0) ** 1.6
     return np.maximum(d, 0.032 - ly)
 
 
@@ -221,6 +224,8 @@ _tt = [0.40, 0.46, 0.52, 0.60, 0.625, 0.66, 0.684, 0.70]
 _r40, _r46 = float(armR(-0.40)), float(armR(-0.46))
 HAND_RX = lookup(smooth([[v, t] for v, t in zip([_r40, _r46, 0.0245, 0.0165, 0.0115, 0.0105, 0.009, 0.004], _tt)], 200))
 HAND_RZ = lookup(smooth([[v, t] for v, t in zip([_r40, _r46, 0.026, 0.0205, 0.0215, 0.0225, 0.0205, 0.008], _tt)], 200))
+
+NAVEL_Y = 1.122
 
 FINGERS = [(0.0145, 0.03), (0.005, 0.037), (-0.0045, 0.034), (-0.0135, 0.027)]
 
@@ -259,7 +264,7 @@ def arm(x, y, z, side):
 def body(x, y, z):
     t = torso(x, y, z)
     # thighs round into each other only right at the crotch, so there's no sharp notch but still a gap below
-    legs = smin(leg(x, y, z, 1), leg(x, y, z, -1), 0.001 + 0.05 * ramp(y, 0.7, 0.82))
+    legs = smin(leg(x, y, z, 1), leg(x, y, z, -1), 0.001 + 0.014 * ramp(y, 0.8, 0.87))   # just a soft crotch, the thighs stay apart
     d = smin(t, legs, 0.05)
     arms = np.minimum(arm(x, y, z, 1), arm(x, y, z, -1))
     # a wide, soft join at the shoulder, narrowing below the armpit so the arm doesn't web to the side

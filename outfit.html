@@ -334,8 +334,8 @@ const SLEEVE_DEFAULT = { tanks: 'none', tees: 'short', tops: 'long', shirts: 'lo
 const SLEEVE = { 14: 'short', 26: 'short', 30: 'short', 46: 'short', 34: 'none', 31: 'short', 52: 'short', 66: 'short', 95: 'short',
   114: 'short', 116: 'short', 57: 'none', 32: 'long', 62: 'short' };
 const OPEN_FRONT = new Set([8, 57, 58, 59, 61, 72, 75, 79, 115]);
-const SKIRT_HEM = { 15: 0.15, 20: 0.74, 47: 0.58, 48: 0.5, 105: 0.56 };
-const PANTS_HEM = { 68: 0.33 };
+const SKIRT_HEM = { 15: 0.152, 20: 0.77, 47: 0.602, 48: 0.519, 105: 0.581 };
+const PANTS_HEM = { 68: 0.341 };
 // Part of each photo to use as the fabric (fractions of the photo: x0, y0, x1, y1).
 const CROP_DEFAULT = {
   tanks: [.32, .44, .68, .66], tees: [.3, .44, .7, .68], tops: [.3, .42, .7, .68], shirts: [.3, .42, .7, .68],
@@ -580,9 +580,9 @@ function startScene() {
     return pts[pts.length - 1].x;
   };
   // Model proportions: long legs (crotch at half height), slim waist, small head.
-  const CROTCH = 0.8, HIP = 1.0;
-  const torsoPts = smooth([[0, .8], [.05, .83], [.095, .87], [.128, .91], [.148, .95], [.156, .995], [.15, 1.04], [.122, 1.11], [.099, 1.165],
-    [.104, 1.22], [.116, 1.26], [.125, 1.31], [.124, 1.355], [.12, 1.4], [.112, 1.44], [.09, 1.475], [.052, 1.505], [.041, 1.54], [.039, 1.585],
+  const CROTCH = 0.84, HIP = 1.02;
+  const torsoPts = smooth([[0, .84], [.03, .862], [.075, .892], [.105, .918], [.13, .945], [.148, .978], [.156, 1.02], [.15, 1.061], [.122, 1.126], [.099, 1.176],
+    [.104, 1.227], [.116, 1.264], [.125, 1.31], [.124, 1.355], [.12, 1.4], [.112, 1.44], [.09, 1.475], [.052, 1.505], [.041, 1.54], [.039, 1.585],
     // neck flows straight into the head (no separate ball)
     [.048, 1.605], [.068, 1.628], [.08, 1.66], [.083, 1.7], [.078, 1.745], [.061, 1.784], [.032, 1.806], [0, 1.813]], 260);
   // Curves the lathe can't make: the bust pushes forward and the seat pushes back.
@@ -591,9 +591,9 @@ function startScene() {
   // The bust rises in a long, gentle slope from the upper chest and rounds off quickly underneath.
   const BUST = { y: 1.285, sy: 0.056, syUp: 0.095, x: 0.073, sx: 0.066, a: 0.042 };
   const CHEST = { y: 1.405, sy: 0.045, x: 0, sx: 0.11, a: -0.006 };   // keeps the upper chest flat
-  const LUMBAR = { y: 1.13, sy: 0.075, x: 0, sx: 0.1, a: -0.008 };    // the small of the back
-  const SEAT = { y: 0.96, sy: 0.09, x: 0.055, sx: 0.085, a: 0.012 };
-  const BELLY = { y: 1.02, sy: 0.11, x: 0, sx: 0.12, a: -0.042 };   // flattens the tummy
+  const LUMBAR = { y: 1.144, sy: 0.07, x: 0, sx: 0.1, a: -0.008 };    // the small of the back
+  const SEAT = { y: 0.988, sy: 0.083, x: 0.055, sx: 0.085, a: 0.012 };
+  const BELLY = { y: 1.043, sy: 0.101, x: 0, sx: 0.12, a: -0.042 };   // flattens the tummy
   // Each curve is a soft mound at x = ±b.x. The two sides are added (not mirrored with |x|), so there's
   // no crease down the centre line. Bridged (for clothes) keeps it flat between the two sides.
   const bump = (b, x, y, bridged) => {
@@ -631,10 +631,10 @@ function startScene() {
     return geo;
   }
   const torsoR = lookup(torsoPts);
-  const LEG_X = 0.072, LEG_TOP = 0.96, LEG_TILT = 0.02;
+  const LEG_X = 0.078, LEG_TOP = 1.0, LEG_TILT = 0.015;
   // Slim ankle, a curve of calf, a narrow knee, then a fuller thigh.
-  const legPts = smooth([[0, .05], [.022, .058], [.022, .1], [.03, .19], [.044, .3], [.04, .38], [.034, .46], [.036, .51],
-    [.044, .58], [.055, .7], [.063, .82], [.067, .9], [.067, .965]], 140);
+  const legPts = smooth([[0, .05], [.022, .058], [.022, .1], [.03, .194], [.044, .309], [.04, .393], [.034, .477], [.036, .529],
+    [.044, .602], [.055, .728], [.063, .853], [.067, .937], [.067, 1.005]], 140);
   const legR = lookup(legPts);
   /* One continuous surface for the torso, shoulders and tops of the thighs.
      At each height the cross-section is the torso (an oval, widened at the shoulders) blended smoothly
@@ -656,8 +656,8 @@ function startScene() {
   const depthAt = (y) => ZS + (1 - ZS) * ramp(y, 1.46, 1.53) + 0.12 * ramp(y, 1.56, 1.64);
   const headFwd = (y) => 0.012 * ramp(y, 1.57, 1.66);
   function legRay(sx, cz, y, side) {
-    if (y > 1.02) return 0;
-    const R = legR(y) * (1 - 0.5 * ramp(y, 0.9, 1.02));          // thighs fade inside the hips
+    if (y > 1.06) return 0;
+    const R = legR(y) * (1 - 0.5 * ramp(y, 0.94, 1.06));          // thighs fade inside the hips
     const cx = side * (LEG_X - (LEG_TOP - y) * Math.sin(LEG_TILT));
     return rayOut(sx, cz, cx, 0, R, R * 0.92);
   }
@@ -682,7 +682,7 @@ function startScene() {
   function bodyR(phi, y, withArms = true) {
     const sx = Math.sin(phi), cz = Math.cos(phi), t = torsoR(y);
     let r = y > CROTCH ? rayOut(sx, cz, 0, headFwd(y), t + SH(y), t * depthAt(y)) : 0;
-    if (y < 1.03) r = smax(r, Math.max(legRay(sx, cz, y, 1), legRay(sx, cz, y, -1)));
+    if (y < 1.07) r = smax(r, Math.max(legRay(sx, cz, y, 1), legRay(sx, cz, y, -1)));
     if (withArms && y >= ARM_CUT) {
       for (const side of [-1, 1]) {
         const h = armHit(sx, cz, y, side);
@@ -766,7 +766,7 @@ function startScene() {
   };
   // The dress form itself is ONE seamless surface (head to toe, hands included) with smooth normals,
   // prebuilt by tools/build_mannequin.py from the shape numbers above. Rerun that after changing them.
-  const MANNEQUIN_V = '1';
+  const MANNEQUIN_V = '2';
   fetch('binder/mannequin.bin?v=' + MANNEQUIN_V).then((r) => r.arrayBuffer()).then((buf) => {
     const dv = new DataView(buf);
     const nv = dv.getUint32(4, true), ni = dv.getUint32(8, true), isz = dv.getUint32(12, true);
@@ -1008,11 +1008,11 @@ function startScene() {
       case 'shirts': {
         const off = 0.013, m = mat(f, 4, 1.6);
         if (sleeveLen === 0) {
-          put(torsoTube(0.97, 1.37, off, null, 0, false, neckOf(it)), m, form, oval);
+          put(torsoTube(0.99, 1.37, off, null, 0, false, neckOf(it)), m, form, oval);
           if (it.n !== 34) straps(1.37, off, m, strapWidth(it));
         } else {
           const top = it.cat === 'tops' ? 1.497 : 1.51;
-          put(torsoTube(0.97, top, off, null, 0, true, it.cat === 'shirts' ? null : neckOf(it)), m, form, oval);
+          put(torsoTube(0.99, top, off, null, 0, true, it.cat === 'shirts' ? null : neckOf(it)), m, form, oval);
           sleeves(sleeveLen, off + 0.004, mat(f, 1.5, sleeveLen * 4));
           if (it.cat === 'shirts') collar(1.51, off, mat(f, 6, 0.4));
         }
@@ -1021,14 +1021,14 @@ function startScene() {
       case 'knits':
       case 'jackets': {
         const off = 0.03, open = OPEN_FRONT.has(it.n), m = mat(f, 4, 1.8);
-        put(torsoTube(0.92, 1.5, off, null, open ? 0.62 : 0, sleeveLen > 0), m, form, oval);
+        put(torsoTube(0.955, 1.5, off, null, open ? 0.62 : 0, sleeveLen > 0), m, form, oval);
         sleeves(sleeveLen, off, mat(f, 1.5, 2.2));
         if (it.cat === 'jackets' && !open) collar(1.51, off - 0.004, mat(f, 6, 0.4));
         break;
       }
       case 'dresses': {
         const off = 0.016, m = mat(f, 4, 2.6);
-        const hem = it.n === 32 ? 0.56 : 0.64;
+        const hem = it.n === 32 ? 0.58 : 0.665;
         if (sleeveLen === 0) {
           put(torsoTube(hem, 1.37, off, aLine(off, 0.32), 0, false, neckOf(it)), m, form, oval);
           straps(1.37, off, m, strapWidth(it));
@@ -1041,16 +1041,16 @@ function startScene() {
       }
       case 'skirts': {
         const off = 0.008, hem = SKIRT_HEM[it.n] || 0.56;
-        put(torsoTube(hem, 1.15, off, aLine(off, it.n === 20 ? 0.6 : 0.2)), mat(f, 4, 2), form, oval);
+        put(torsoTube(hem, 1.165, off, aLine(off, it.n === 20 ? 0.6 : 0.2)), mat(f, 4, 2), form, oval);
         break;
       }
       case 'pants':
       case 'shorts': {
-        const off = 0.009, hem = it.cat === 'shorts' ? 0.68 : PANTS_HEM[it.n] || 0.075;
-        put(torsoTube(0.8, 1.12, off), mat(f, 4, 0.8), form, oval);
+        const off = 0.009, hem = it.cat === 'shorts' ? 0.707 : PANTS_HEM[it.n] || 0.075;
+        put(torsoTube(CROTCH, 1.135, off), mat(f, 4, 0.8), form, oval);
         const widen = it.n === 71 ? 0.05 : it.cat === 'shorts' ? 0.02 : 0.006;
         for (const side of [-1, 1]) {
-          put(legTube(hem, 0.965, 0.012, widen), mat(f, 1.5, (0.965 - hem) * 3), legs[side], (s) => { s.position.y = -LEG_TOP; s.scale.z = 0.92; });
+          put(legTube(hem, 1.005, 0.012, widen), mat(f, 1.5, (1.005 - hem) * 3), legs[side], (s) => { s.position.y = -LEG_TOP; s.scale.z = 0.92; });
         }
         break;
       }
