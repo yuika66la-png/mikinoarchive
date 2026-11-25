@@ -129,7 +129,7 @@ def ramp(y, a, b):
 
 
 def SH(y):
-    return 0.032 * np.exp(-(((y - 1.42) / 0.065) ** 2))
+    return 0.042 * np.exp(-(((y - 1.425) / 0.055) ** 2))
 
 
 def depth_at(y):

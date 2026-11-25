@@ -582,8 +582,8 @@ function startScene() {
   // Model proportions: long legs (crotch at half height), slim waist, small head.
   const CROTCH = 0.89, HIP = 1.05;
   // Slim fashion-mannequin proportions: legs half the height, narrow waist and hips, long slim neck.
-  const torsoPts = smooth([[0, .89], [.03, .908], [.074, .933], [.102, .957], [.119, .984], [.127, 1.015], [.13, 1.051], [.127, 1.088], [.108, 1.146], [.09, 1.191],
-    [.096, 1.237], [.106, 1.27], [.115, 1.31], [.114, 1.355], [.112, 1.4], [.106, 1.44], [.096, 1.468], [.072, 1.497], [.05, 1.522], [.044, 1.55], [.042, 1.582],
+  const torsoPts = smooth([[0, .89], [.03, .908], [.074, .933], [.1, .957], [.114, .984], [.121, 1.015], [.124, 1.051], [.122, 1.088], [.108, 1.146], [.09, 1.191],
+    [.096, 1.237], [.106, 1.27], [.115, 1.31], [.114, 1.355], [.112, 1.4], [.107, 1.44], [.1, 1.468], [.074, 1.497], [.05, 1.522], [.044, 1.55], [.042, 1.582],
     // neck flows straight into a small egg head (no separate ball)
     [.048, 1.6], [.064, 1.622], [.075, 1.652], [.077, 1.69], [.072, 1.732], [.058, 1.765], [.04, 1.784], [.018, 1.794], [0, 1.797]], 260);
   // Curves the lathe can't make: the bust pushes forward and the seat pushes back.
@@ -593,7 +593,7 @@ function startScene() {
   const BUST = { y: 1.31, sy: 0.052, syUp: 0.09, x: 0.061, sx: 0.056, a: 0.048 };
   const CHEST = { y: 1.405, sy: 0.045, x: 0, sx: 0.11, a: -0.006 };   // keeps the upper chest flat
   const LUMBAR = { y: 1.162, sy: 0.065, x: 0, sx: 0.085, a: -0.008 };    // the small of the back
-  const SEAT = { y: 1.029, sy: 0.075, x: 0.047, sx: 0.072, a: 0.009 };
+  const SEAT = { y: 1.029, sy: 0.075, x: 0.047, sx: 0.072, a: 0.004 };
   const BELLY = { y: 1.072, sy: 0.09, x: 0, sx: 0.1, a: -0.036 };   // flattens the tummy
   // Each curve is a soft mound at x = ±b.x. The two sides are added (not mirrored with |x|), so there's
   // no crease down the centre line. Bridged (for clothes) keeps it flat between the two sides.
@@ -643,7 +643,7 @@ function startScene() {
   /* One continuous surface for the torso, shoulders and tops of the thighs.
      At each height the cross-section is the torso (an oval, widened at the shoulders) blended smoothly
      into the two thighs, so there is no seam where legs meet hips and the arms sit on real shoulders. */
-  const SH = (y) => 0.032 * Math.exp(-(((y - 1.42) / 0.065) ** 2));   // soft, sloping shoulders
+  const SH = (y) => 0.042 * Math.exp(-(((y - 1.425) / 0.055) ** 2));   // soft, sloping shoulders
   const ellipseR = (sx, cz, rx, rz) => (rx > 0 && rz > 0 ? 1 / Math.sqrt((sx / rx) ** 2 + (cz / rz) ** 2) : 0);
   // Where a ray from the centre line (direction sx, cz) enters and leaves an oval centred at (cx, cz0).
   function rayHit(sx, cz, cx, cz0, rx, rz) {
@@ -754,7 +754,7 @@ function startScene() {
   }
 
   // Slim arms hanging close to the body; ARM_LEN shortens them a little (the arm groups are scaled by it).
-  const ARM_ANGLE = 0.09, ARM_LEN = 0.92, SHOULDER = new THREE.Vector3(0.13, 1.425, 0);
+  const ARM_ANGLE = 0.13, ARM_LEN = 0.92, SHOULDER = new THREE.Vector3(0.137, 1.43, 0);
   // Arm profile along its own downward axis (y = minus the distance from the shoulder).
   const armPts = smooth([[0, -.645], [.012, -.64], [.0145, -.615], [.015, -.6], [.021, -.46], [.019, -.33], [.025, -.2],
     [.028, -.07], [.03, -.02], [.026, .014], [0, .03]], 120);
@@ -771,7 +771,7 @@ function startScene() {
   };
   // The dress form itself is ONE seamless surface (head to toe, hands included) with smooth normals,
   // prebuilt by tools/build_mannequin.py from the shape numbers above. Rerun that after changing them.
-  const MANNEQUIN_V = '4';
+  const MANNEQUIN_V = '5';
   fetch('binder/mannequin.bin?v=' + MANNEQUIN_V).then((r) => r.arrayBuffer()).then((buf) => {
     const dv = new DataView(buf);
     const nv = dv.getUint32(4, true), ni = dv.getUint32(8, true), isz = dv.getUint32(12, true);
